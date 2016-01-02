@@ -10,6 +10,16 @@
 #include <stdio.h>
 #include <tchar.h>
 
+//my
+#include <fstream>
+#include <iostream>
+#include <string>
+#include <vector>
+#include <sstream>
+#include <cmath>
+#include <algorithm>
+#include <iomanip>
+#include <unordered_map>
 
 
 // TODO: reference additional headers your program requires here

@@ -2,1195 +2,367 @@
 //
 
 #include "stdafx.h"
-#include <fstream>
-#include <iostream>
-#include <string>
-#include <vector>
-#include <sstream>
-#include <cmath>
-#include <algorithm>
-#include <iomanip>
+
+
+#include "converter.h"
+#include "term.h"
+#include "a_op.h"
+#include "ground_energy.h"
+#include "trig_coefficients.h"
+#include "a_op_xz_rotate.h"
 
 using namespace std;
 
-const int N = 10; //max order
-const int min_op_amount = 1;;
+
+const int min_op_amount = 4;
 const string delim = "\\";
-const string out_res = "results";
+const string config_dir = "config";
+const string inp_res = "input_rot";
+const string out_res = "Results_rot";
+const string out_file_end = "_rot.txt";
+
+//Trigonometry coefficients for XZ spin-rotation
 
 
 
-
-
-void findCos(int **m, int  size, int n, int &da, int &db)
-{
-	for (int i = 0; i < size; i++)
-		for (int j = 0; j < size; j++)
-		{
-			if (m[i][j] == n)
-			{
-				da = j;
-				db = i;
-				break;
-			}
-		}
-	da = da - size / 2;
-	db = -db + size / 2;
-}
+int arr[4][2] = { { 0, 0 }, { 0, 1 }, { 1, 0 }, { 1, 1 } };
 
 
 
-
-//new structures
-struct term
-{
-	bool type; //if z-only or C then true(for energy), else false -correction
-	int len;
-	int order;
-	char ops[10];
-	int nums[10];
-	double value;
-
-	void decompose(string s, double val)
+//Hash functions for unordered maps
+namespace std{
+	template <>
+	struct hash<a_op>
 	{
-		int temp = s.find_first_not_of("SJpmz");
-		//temp
-		//int nn = s.find_first_of("pm");
-		//end temp
-		type = s.find_first_of("pm") == string::npos ? true : false;
-		len = temp - 1;
-		for (int i = 0; i < len; i++)
-			ops[i] = s[i + 1];
-		istringstream is;
-		char tc;
-		is.str(s.substr(temp));
-		for (int i = 0; i <len; i++)
+		std::size_t operator()(const a_op& k) const
 		{
-			is >> nums[i];
-			is >> tc;
-		}
-		value = val;
-
-	}
-	void setOrder(int Ord)
-	{
-		order = Ord;
-	}
-	bool operator==(term next)
-	{
-		if (len != next.len)
-			return false;
-		for (int i = 0; i < len; i++)
-		{
-			if (ops[i] != next.ops[i])
-				return false;
-			if (nums[i] != next.nums[i])
-				return false;
-		}
-		return true;
-	}
-
-	
-
-};
-
-struct a_op
-{
-	int n;//general length
-	vector<char> names; //plus or minus
-	vector<int> node; //to calc shift
-	double coeff;
-	int order;
-	bool operator==(a_op sec)
-	{
-		if (n != sec.n)
-			return false;
-		for (int i = 0; i < n; i++)
-		{
-			if (names[i] != sec.names[i])
-				return false;
-			if (node[i] != sec.node[i])
-				return false;
-		}
-		return true;
-	}
-
-	void printAterm(ofstream &F,int **m,int size)
-	{
-		if (n == 2)
-		{
-			F << coeff << "*";
-
-			if (names[0] != names[1])
-				F << "G";
-			else if (names[0] == 'm')
-				F << "F";
-			else if (names[0] == 'p')
-				F << "Fp";
-			else
-				F << "\n\n Strange ops \n\n";
-			if (node[0] != node[1])
-			{
-				//if (node[0]!=0)
-				//	F << "\n\n Strange nodes \n\n";
-				int da1, db1, da2, db2;
-				findCos(m, size, node[0], da1, db1);
-				findCos(m, size, node[1], da2, db2);
-				F << "*Cos[ka*" << (da2-da1)<<"+kb*"<<(db2-db1) << "]";
-			}
-		}
-		else
-		{
-			F << "\n\n Strange length \n\n";
-		}
-	}
-
-
-};
-
-struct Cos
-{
-	double factor;
-	vector<int> ka, kb;
-	bool operator ==(Cos c2)
-	{
-		int s1, s2;
-		s1 = ka.size();
-		s2 = c2.ka.size();
-		if (s1 != s2)
-			return false;
-		s1 = kb.size();
-		s2 = c2.kb.size();
-		if (s1 != s2)
-			return false;
-		for (int i = 0; i < ka.size(); i++)
-		{
-			if (ka[i] != c2.ka[i] || kb[i] != c2.kb[i])
-				return false;
-		}
-		return true;
-	}
-};
-
-struct correction
-{
-	vector<char> in;
-	char out[2];
-	vector<Cos> cs;
-	bool operator ==(correction c2)
-	{
-		for (int i = 0; i < in.size(); i++)
-		{
-			if (in[i] != c2.in[i])
-				return false;
-		}
-		if (out[0] != c2.out[0] || out[1] != c2.out[1])
-			return false;
-		return true;
-	}
-	void add(Cos new_cos)
-	{
-		vector<Cos>::iterator it;
-		it = find(cs.begin(), cs.end(), new_cos);
-		if (it != cs.end())
-		{
-			it->factor += new_cos.factor;
-		}
-		else
-			cs.push_back(new_cos);
-	}
-	void print(ofstream & outF, int num)
-	{
-		if (num == 1)//for sz terms
-		{
-			outF << "Subscript[ap,k]*Subscript[a,k]*" << cs[0].factor;
-		}
-
-		if (num == 2)  //for pm terms
-		{
-			if (out[0] == 'p')
-				outF << "Subscript[ap,k]*";
-			else
-				outF << "Subscript[a,k]*";
-
-			if (out[0] == 'p'&&out[1] == 'p')
-				outF << "Subscript[ap,-k]";
-			if (out[0] == 'p'&&out[1] == 'm')
-				outF << "Subscript[a,k]";
-			if (out[0] == 'm'&&out[1] == 'p')
-				outF << "Subscript[ap,k]";
-			if (out[0] == 'm'&&out[1] == 'm')
-				outF << "Subscript[a,-k]";
-
-			outF << "*(";
-			for (int i = 0; i < cs.size(); i++)
-			{
-				outF << cs[i].factor << "*Cos[";
-				if (out[0] == 'p')
-					outF << "Subscript[k,a]*" << cs[i].ka[0] << "+Subscript[k,b]*" << cs[i].kb[0] << "+";
-				else
-					outF << "-Subscript[k,a]*" << cs[i].ka[0] << "-Subscript[k,b]*" << cs[i].kb[0] << "+";
-				///////////////////////////////////////////////////////////////////////////////////////////////
-				// cos
-				///////////////////////////////////////////////////////////////////////////////////////////////
-
-				if (out[0] == 'p')
-					outF << "-Subscript[k,a]*" << cs[i].ka[1] << "-Subscript[k,b]*" << cs[i].kb[1];
-				else
-					outF << "Subscript[k,a]*" << cs[i].ka[1] << "+Subscript[k,b]*" << cs[i].kb[1];
-
-				outF << "]";
-				if (i != cs.size() - 1)
-				{
-					outF << "+";
-				}
-			}
-			outF << ")";
-
-		}
-		if (num == 3)  //for triple terms
-		{
-			if (in[0] == 'p')
-				outF << "Subscript[ap,k1]*";
-			else
-				outF << "Subscript[a,k1]*";
-			if (out[0] == 'p')
-				outF << "Subscript[ap,k2]*";
-			else
-				outF << "Subscript[a,k2]*";
-			if (out[1] == 'p')
-				outF << "Subscript[ap,k3]*";
-			else
-				outF << "Subscript[a,k3]*";
-			//temp
-			//char c=
-			//end temp
-			outF << "DiracDelta[" << ((in[0] == 'p') ? "k1" : "-k1") << "+" << (out[0] == 'p' ? "k2" : "-k2") << "+" << (out[1] == 'p' ? "k3" : "-k3") << "]*(";
-			for (int i = 0; i < cs.size(); i++)
-			{
-				outF << cs[i].factor << "*Cos[";
-				if (in[0] == 'p')
-					outF << "Subscript[k1,a]*" << cs[i].ka[0] << "+Subscript[k1,b]*" << cs[i].kb[0] << "+";
-				else
-					outF << "Subscript[k1,a]*" << -cs[i].ka[0] << "+Subscript[k1,b]*" << -cs[i].kb[0] << "+";
-				if (out[0] == 'p')
-					outF << "Subscript[k2,a]*" << cs[i].ka[1] << "+Subscript[k2,b]*" << cs[i].kb[1] << "+";
-				else
-					outF << "Subscript[k2,a]*" << -cs[i].ka[1] << "+Subscript[k2,b]*" << -cs[i].kb[1] << "+";
-				if (out[1] == 'p')
-					outF << "Subscript[k3,a]*" << cs[i].ka[1] << "+Subscript[k3,b]*" << cs[i].kb[1];
-				else
-					outF << "Subscript[k3,a]*" << -cs[i].ka[1] << "+Subscript[k3,b]*" << -cs[i].kb[1];
-				outF << "]";
-				if (i != cs.size() - 1)
-				{
-					outF << "+";
-				}
-			}
-			outF << ")";
-
-		}
-		if (num == 4)  //for quatro terms
-		{
-			if (in[0] == 'p'&&in[1] == 'p')
-				outF << "Subscript[Fp,k]";
-			if (in[0] == 'm'&&in[1] == 'm')
-				outF << "Subscript[Fm,k]";
-			if (in[0] == 'p'&&in[1] == 'm')
-				outF << "Subscript[G,k]";
-			if (in[0] == 'm'&&in[1] == 'p')
-				outF << "Subscript[G,k]";
-			outF << "*";
-			if (out[0] == 'p'&&out[1] == 'p')
-				outF << "Subscript[Fp,q]";
-			if (out[0] == 'm'&&out[1] == 'm')
-				outF << "Subscript[Fm,q]";
-			if ((out[0] == 'p'&&out[1] == 'm') || (out[0] == 'm'&&out[1] == 'p'))
-				outF << "Subscript[G,q]";
-			outF << "*(";
-			for (int i = 0; i < cs.size(); i++)
-			{
-				outF << cs[i].factor << "*Cos[";
-				outF << "ka*" << cs[i].ka[0] << +"+kb*" << cs[i].kb[0] << "+";
-				if (in[1] == in[0])
-					outF << "ka*" << cs[i].ka[1] << +"+kb*" << cs[i].kb[1];
-				else
-					outF << "ka*" << -cs[i].ka[1] << +"+kb*" << -cs[i].kb[1];
-				outF << "+";
-				outF << "qa*" << cs[i].ka[2] << +"+qb*" << cs[i].kb[2];
-				outF << "+";
-				if (out[1] == out[2])
-					outF << "qa*" << cs[i].ka[3] << +"+qb*" << cs[i].kb[3];
-				else
-					outF << "qa*" << -cs[i].ka[3] << +"+qb*" << -cs[i].kb[3];
-				outF << "]";
-				if (i != cs.size() - 1)
-				{
-					outF << "+";
-				}
-			}
-			outF << ")";
-		}
-
-
-	}
-};
-
-int mask4[6][4] = { { 1, 1, 0, 0 }, { 1, 0, 1, 0 }, { 1, 0, 0, 1 }, { 0, 1, 1, 0 }, { 0, 1, 0, 1 }, { 0, 0, 1, 1 } };
-int mask3[3][3] = { { 1, 1, 0 }, { 1, 0, 1 }, { 0, 1, 1 } };
-int out_pair[6][3] = { { 0, 1, 2 }, { 1, 0, 2 }, { 1, 2, 0 }, { 0, 2, 1 }, { 2, 0, 1 }, { 2, 1, 0 } };
-string green_func[4] = { "G", "GP", "F", "FP" };
-string momenta_names[3] = { "k", "k1", "k2" };
-class converter
-{
-
-	int **m;
-	int matrix_size;
-	vector<term> shorterTerms;
-	vector<a_op> a_ops_l;
-	vector<correction> cors;
-	double factor;
-	int a_amount;
-public:
-	void set(double F, int A_amount, int **M, int Matrix_size)
-	{
-		factor = F;
-		a_amount = A_amount;
-		m = M;
-		matrix_size = Matrix_size;
-	}
-	void decomposeTerm(term in)
-	{
-		if (a_amount == 1)
-			decomposeTerm1(in);
-		if (a_amount == 2)
-		{
-			decomposeTerm2(in);
-		}
-		if (a_amount == 3)
-			decomposeTerm3(in);
-		if (a_amount == 4)
-			decomposeTerm4(in);
-	}
-private:
-	void insertShortTerm(term cur)
-	{
-		vector<term>::iterator it;
-		it = find(shorterTerms.begin(), shorterTerms.end(), cur);
-		if (it != shorterTerms.end())
-			it->value += cur.value;
-		else
-			shorterTerms.push_back(cur);
-	}
-	void decomposeTerm1(term in)
-	{
-		term cur;
-		cur.len = 1;
-		double coeff = 1;
-		for (int i = 0; i < in.len - 1; i++)
-			coeff *= factor;
-		cur.order = in.order;
-		cur.value = in.value*coeff;
-		cur.ops[0] = in.ops[0];
-		cur.nums[0] = 0;
-		insertShortTerm(cur);
-
-	}
-	void decomposeTerm2(term in)
-	{
-		//two term types:
-		//pm+z and z-only
-		//
-
-		
-		int pm = 0;
-		int pmInd[] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-		int index = 0;
-		for (int i = 0; i < in.len; i++) //ищем первый pm оператор
-			if (in.ops[i] != 'z')
-			{
-				//debug out
-				//if (index > 1)
-					//cout << "Alarm!!!!!!!!!!!!!!!!\n";
-				//end debug out
-				pm++;
-				pmInd[index++] = i;
-			}
-		term cur;
-		double coeff = 1;
-		if (pm == 2)
-		{
-			for (int i = 0; i < in.len - 2; i++)
-				coeff *= factor;
-			cur.len = 2;
-			cur.order = in.order;
-			cur.value = in.value*coeff / in.len;
-			cur.ops[0] = in.ops[pmInd[0]];
-			cur.nums[0] = in.nums[pmInd[0]];
-
-			cur.nums[1] = in.nums[pmInd[1]];
-			cur.ops[1] = in.ops[pmInd[1]];
-
-			insertShortTerm(cur);
-
-		}
-		else if (pm == 0)
-		{
-			if (in.len)//if not C-term
-			{
-				for (int i = 0; i < in.len - 1; i++)//change all except one to factor
-					coeff *= factor;
-				cur.len = 1;						//1 Sz operator
-				cur.order = in.order;
-				cur.value = in.value*coeff;
-
-				cur.ops[0] = in.ops[0];
-				cur.nums[0] = in.nums[0];
-
-				insertShortTerm(cur);
-			}
-
-		}
-
-	}
-	//TODO проверить делитель
-	void decomposeTerm3(term in)
-	{
-		term cur;
-		cur.len = -1;
-		double coeff = 1;
-
-		int pm = 0;
-		for (int i = 0; i < in.len; i++)
-			if (in.ops[i] != 'z')
-				pm++;
-		if (pm == 1)
-		{
-			for (int i = 0; i < in.len - 2; i++)
-				coeff *= factor;
-			cur.len = 2;
-			cur.order = in.order;
-			cur.value = in.value*coeff / in.len;
-			cur.ops[0] = in.ops[0];
-			cur.nums[0] = in.nums[0];
-			if (in.ops[0] == 'z')
-			{
-				for (int i = 1; i < in.len; i++) //ищем первый pm оператор
-					if (in.ops[i] != 'z')
-					{
-						cur.nums[1] = in.nums[i];
-						cur.ops[1] = in.ops[i];
-						insertShortTerm(cur);
-						break;
-					}
-			}
-			else //выбираем все доступные z операторы
-			{
-				for (int i = 1; i < in.len; i++)
-				{
-					cur.ops[1] = in.ops[1];
-					cur.nums[1] = in.nums[1];
-					insertShortTerm(cur);
-				}
-			}
-		}
-		if (pm == 3)
-		{
-			for (int i = 0; i < in.len - 3; i++)
-				coeff *= factor;
-			cur.len = 3;
-			cur.order = in.order;
-			cur.value = in.value*coeff / in.len;
-			int index = 0;
-			for (int i = 0; i < in.len; i++)
-			{
-				if (in.ops[i] != 'z')
-				{
-					cur.ops[index] = in.ops[i];
-					cur.nums[index] = in.nums[i];
-					index++;
-				}
-			}
-			insertShortTerm(cur);
-		}
-
-	}
-	void decomposeTerm4(term in)
-	{
-		term cur;
-		cur.len = -1;
-		double coeff = 1;
-
-		int pm = 0;
-		for (int i = 0; i < in.len; i++)
-			if (in.ops[i] != 'z')
-				pm++;
-		if (pm == 0)
-		{
-			for (int i = 0; i < in.len - 2; i++)
-				coeff *= factor;
-			cur.len = 2;
-			cur.value = coeff*in.value / in.len;
-			cur.order = in.order;
-			for (int i = 1; i < in.len; i++)//замен€ем все подр€д sz, поочереди оставл€ем только i
-			{
-
-				cur.ops[0] = 'z';
-				cur.ops[1] = 'z';
-				cur.nums[0] = in.nums[0];
-				cur.nums[1] = in.nums[i];
-
-				//вставл€ем
-				insertShortTerm(cur);
-			}
-		}
-		if (pm == 2)
-		{
-			for (int i = 0; i < in.len - 3; i++)
-				coeff *= factor;
-			cur.len = 3;
-			cur.value = coeff*in.value / in.len;
-			cur.order = in.order;
-			cur.nums[0] = in.nums[0];
-			cur.ops[0] = in.ops[0];
-			if (cur.ops[0] == 'z')//оставл€ем только pm-члены из оставшихс€
-			{
-				int index = 1;
-				for (int i = 1; i < in.len; i++)
-				{
-					if (in.ops[i] != 'z')
-					{
-						cur.ops[index] = in.ops[i];
-						cur.nums[index] = in.nums[i];
-						index++;
-					}
-				}
-				//вставл€ем
-				insertShortTerm(cur);
-			}
-			else //по очереди выбираем все z-члены
-			{
-				int index = 0;
-				for (int i = 1; i < in.len; i++) //ищем второй pm оператор
-					if (in.ops[i] != 'z')
-					{
-						index = i;
-						break;
-					}
-				for (int i = 1; i < in.len; i++)
-				{
-					if (index < i)
-					{
-						cur.ops[1] = in.ops[index];
-						cur.ops[2] = in.ops[i];
-						cur.nums[1] = in.nums[index];
-						cur.nums[2] = in.nums[i];
-					}
-					if (index > i)
-					{
-						cur.ops[1] = in.ops[i];
-						cur.ops[2] = in.ops[index];
-						cur.nums[1] = in.nums[i];
-						cur.nums[2] = in.nums[index];
-					}
-					//вставл€ем
-					if (i != index)
-						insertShortTerm(cur);
-				}
-			}
-
-		}
-
-		if (pm == 4)
-		{
-			for (int i = 0; i < in.len - 4; i++)
-				coeff *= factor;
-			cur.len = 4;
-			cur.order = in.order;
-			cur.value = in.value*coeff / in.len;
-			int index = 0;
-			for (int i = 0; i < in.len; i++)
-			{
-				if (in.ops[i] != 'z')
-				{
-					cur.ops[index] = in.ops[i];
-					cur.nums[index] = in.nums[i];
-					index++;
-				}
-			}
-			//вставл€ем
-			insertShortTerm(cur);
-		}
-	} 
-public:
-	void convertToAop()
-	{
-		int pm;
-		a_op cur;
-		for (int i = 0; i < shorterTerms.size(); i++)
-		{
-			pm = 0;
-			cur.names.clear();
-			cur.node.clear();
-			cur.n = 0;
-			cur.coeff = shorterTerms[i].value;
-			cur.order = shorterTerms[i].order;
-			for (int j = 0; j < shorterTerms[i].len; j++)
-			{
-				if (shorterTerms[i].ops[j] == 'z')
-				{
-					cur.names.push_back('p');
-					cur.names.push_back('m');
-					cur.node.push_back(shorterTerms[i].nums[j]);
-					cur.node.push_back(shorterTerms[i].nums[j]);
-					cur.n += 2;
-					if (factor > 0)//если sz>0, то надо брать знак минус
-						cur.coeff *= -1;
-				}
-				else//pm-case
-				{
-					cur.names.push_back(shorterTerms[i].ops[j]);
-					cur.node.push_back(shorterTerms[i].nums[j]);
-					cur.n++;
-				}
-			}
-
-			//vector<a_op>::iterator it = find(a_ops_l.begin(), a_ops_l.end(), cur);
-			//if (it != a_ops_l.end())
-
-			//start debug
-			if (cur.node.size() >2)
-			{
-				cout << "Too long!!!!!!!!! test\n";
-			}
-			//end debug*/
-
-			
-			a_ops_l.push_back(cur);
-		}
-	}
-
-	void convertToCorrections()
-	{
-		correction cur;
-		int index, index2;
-		if (a_amount == 1)//дл€ Sz
-		{
-			for (int i = 0; i < a_ops_l.size(); i++)
-			{
-				cur.cs.clear();
-				cur.out[0] = a_ops_l[i].names[0];
-				cur.out[1] = a_ops_l[i].names[1];
-				Cos cur_cos;
-				cur_cos.factor = a_ops_l[i].coeff;
-
-				cur_cos.ka.push_back(0);
-				cur_cos.kb.push_back(0);
-
-				cur_cos.ka.push_back(0);
-				cur_cos.kb.push_back(0);
-				vector<correction>::iterator it = find(cors.begin(), cors.end(), cur);
-				if (it != cors.end())
-				{
-					it->cs.push_back(cur_cos);
-				}
-				else
-				{
-					cur.cs.push_back(cur_cos);
-					cors.push_back(cur);
-				}
-			}
-		}
-		if (a_amount == 2)
-		{
-			for (int i = 0; i < a_ops_l.size(); i++)
-			{
-				cur.cs.clear();
-				Cos cur_cos;
-				cur_cos.factor = a_ops_l[i].coeff;
-				int da, db;
-				cur.out[0] = a_ops_l[i].names[0];
-				cur.out[1] = a_ops_l[i].names[1];
-
-				findCos(m, matrix_size, a_ops_l[i].node[0], da, db);
-				cur_cos.ka.push_back(da);
-				cur_cos.kb.push_back(db);
-				findCos(m, matrix_size, a_ops_l[i].node[1], da, db);
-				cur_cos.ka.push_back(da);
-				cur_cos.kb.push_back(db);
-
-
-				//end eval
-				vector<correction>::iterator it = find(cors.begin(), cors.end(), cur);
-				if (it != cors.end())
-				{
-					it->cs.push_back(cur_cos);
-				}
-				else
-				{
-					cur.cs.push_back(cur_cos);
-					cors.push_back(cur);
-				}
-
-			}
-		}
-		if (a_amount == 3)
-		{
-			for (int i = 0; i < a_ops_l.size(); i++)
-			{
-
-				for (int j = 0; j < 3; j++) //3 способа выбрать внешний опреатор
-				{
-					cur.cs.clear();
-					cur.in.clear();
-					index = 0;
-					int nums[3];
-					for (int k = 0; k < 3; k++)//назначаем какой оператор будет внешним
-					{
-						if (mask3[j][k] == 0)//вставл€ем в in
-						{
-							cur.in.push_back(a_ops_l[i].names[k]);
-							nums[0] = k;
-						}
-						else
-						{
-							nums[1 + index] = k;
-							cur.out[index++] = a_ops_l[i].names[k];
-						}
-					}
-					//eval cos for cur term
-					Cos cur_cos;
-					cur_cos.factor = a_ops_l[i].coeff;
-					int da, db;
-
-					findCos(m, matrix_size, a_ops_l[i].node[nums[0]], da, db);
-					cur_cos.ka.push_back(da);
-					cur_cos.kb.push_back(db);
-					findCos(m, matrix_size, a_ops_l[i].node[nums[1]], da, db);
-					cur_cos.ka.push_back(da);
-					cur_cos.kb.push_back(db);
-					findCos(m, matrix_size, a_ops_l[i].node[nums[2]], da, db);
-					cur_cos.ka.push_back(da);
-					cur_cos.kb.push_back(db);
-
-					//end eval
-					vector<correction>::iterator it = find(cors.begin(), cors.end(), cur);
-					if (it != cors.end())
-					{
-						it->cs.push_back(cur_cos);
-					}
-					else
-					{
-						cur.cs.push_back(cur_cos);
-						cors.push_back(cur);
-					}
-
-				}
-			}
-		}
-		if (a_amount == 4)
-		{
-			for (int i = 0; i < a_ops_l.size(); i++)
-			{
-
-				for (int j = 0; j < 6; j++)
-				{
-					index = 0;
-					index2 = 0;
-					cur.cs.clear();
-					cur.in.clear();
-					int nums[4];
-					for (int k = 0; k < 4; k++)
-					{
-						if (mask4[j][k] == 0)
-						{
-							cur.in.push_back(a_ops_l[i].names[k]);
-							nums[index2++] = k;
-						}
-						else
-						{
-							nums[2 + index] = k;
-							cur.out[index++] = a_ops_l[i].names[k];
-						}
-					}
-					//eval cos for cur term
-					Cos cur_cos;
-					cur_cos.factor = a_ops_l[i].coeff;
-					int da, db;
-
-					findCos(m, matrix_size, a_ops_l[i].node[nums[0]], da, db);
-					cur_cos.ka.push_back(da);
-					cur_cos.kb.push_back(db);
-					findCos(m, matrix_size, a_ops_l[i].node[nums[1]], da, db);
-					cur_cos.ka.push_back(da);
-					cur_cos.kb.push_back(db);
-					findCos(m, matrix_size, a_ops_l[i].node[nums[2]], da, db);
-					cur_cos.ka.push_back(da);
-					cur_cos.kb.push_back(db);
-					findCos(m, matrix_size, a_ops_l[i].node[nums[3]], da, db);
-					cur_cos.ka.push_back(da);
-					cur_cos.kb.push_back(db);
-
-					//end eval
-					vector<correction>::iterator it = find(cors.begin(), cors.end(), cur);
-					if (it != cors.end())
-					{
-						it->cs.push_back(cur_cos);
-					}
-					else
-					{
-						cur.cs.push_back(cur_cos);
-						cors.push_back(cur);
-					}
-				}
-			}
-
-		}
-	}
-
-	void set_signs(char op1, char op2, int &s1, int &s2, int &type)
-	{
-		if (op1 == 'm'&&op2 == 'p') //G_k, оба знака плюс
-		{
-			s1 *= 1;
-			s2 *= 1;
-			type = 0;
-		}
-		if (op1 == 'p'&&op2 == 'm') //Gp_k, оба знака минус
-		{
-			s1 *= -1;
-			s2 *= -1;
-			type = 1;
-		}
-		if (op1 == 'm'&&op2 == 'm') //F_k, + -
-		{
-			s1 *= 1;
-			s2 *= -1;
-			type = 2;
-		}
-		if (op1 == 'p'&&op2 == 'p') //F_k, - +
-		{
-			s1 *= -1;
-			s2 *= 1;
-			type = 3;
-		}
-
-	}
-
-	void print_3_momenta(ostringstream& outF, int signs1[], char type, int k)
-		//type - 1: type==' ' - no additoions, 2: type=='a' - a axis, 3: 'b'- axis
-	{
-		if (signs1[(k + 2) % 3] == 1)
-		{
-			if (-signs1[k] == -1)
-				outF << "-" << momenta_names[0];
-			else
-				outF << momenta_names[0];
-			if (type == 'a' || type == 'b') outF << type;
-			if (-signs1[(k + 1) % 3] == -1)
-				outF << "-" << momenta_names[1];
-			else
-				outF << "+" << momenta_names[1];
-			if (type == 'a' || type == 'b') outF << type;
-		}
-		else
-		{
-			if (signs1[k] == -1)
-				outF << "-" << momenta_names[0];
-			else
-				outF << momenta_names[0];
-			if (type == 'a' || type == 'b') outF << type;
-			if (signs1[(k + 1) % 3] == -1)
-				outF << "-" << momenta_names[1];
-			else
-				outF << "+" << momenta_names[1];
-			if (type == 'a' || type == 'b') outF << type;
-		}
-	}
-
-	void combine(ofstream &outF)
-	{
-		int signs1[3], signs2[3];
-		int min; //номер у которого импульс k1
-		int max; //номер у которого импульс k2
-		int da, db;
-		int type[3];
-		bool if_empty, total_empty1, total_empty2;
-		ostringstream cos2;
-		ostringstream momenta_3;
-		if (a_amount == 3)
-		{
-			for (int i = 0; i < a_ops_l.size(); i++)//перебираем всех кого ставим в начало
-			{
-				for (int j = 0; j<a_ops_l.size(); j++) //назначаем всех поочереди внешним
-				{
-					for (int k = 0; k < 3; k++) //перебираем входной импульс из первых трех операторов
-					{
-						for (int l = 0; l < 6; l++) //задаем маску соответсви€, элементы массива указывают с каким оператором из второй тройки нужно спаривать
-						{
-							for (int mm = 0; mm < 3; mm++) //задаем знаки перед каждым импульсом по типу операторов
-							{
-								if (a_ops_l[i].names[mm] == 'p')
-									signs1[mm] = 1;
-								else
-									signs1[mm] = -1;
-								if (a_ops_l[j].names[mm] == 'p')
-									signs2[mm] = 1;
-								else
-									signs2[mm] = -1;
-							}
-
-							for (int mm = 0; mm < 3; mm++)
-							{
-								set_signs(a_ops_l[i].names[mm], a_ops_l[j].names[out_pair[l][mm]], signs1[mm], signs2[out_pair[l][mm]], type[mm]);
-							}
-							cos2.str("");
-							outF << "+" << a_ops_l[i].coeff*a_ops_l[j].coeff;
-							//выводим 2 первых функции √рина
-							for (int mm = 0; mm < 2; mm++)
-							{
-								outF << "*" << green_func[type[(k + mm) % 3]] << "_" << momenta_names[mm];
-							}
-							//вычисл€ем третий импульс через первые два
-							outF << "*" << green_func[type[(k + 2) % 3]] << "_(";
-							momenta_3.str("");
-							print_3_momenta(momenta_3, signs1, ' ', k);
-							outF << momenta_3.str();
-							outF << ")";
-
-							//
-
-							outF << "*DiracDelta[";
-							for (int mm = 0; mm < 3; mm++)
-							{
-								outF << "+(" << signs1[(k + mm) % 3] << ")*" << momenta_names[mm] << "a";
-							}
-							outF << "]*DiracDelta[";
-							for (int mm = 0; mm < 3; mm++)
-							{
-								outF << "+(" << signs1[(k + mm) % 3] << ")*" << momenta_names[mm] << "b";
-							}
-							/*outF << "]*DiracDelta[";
-							for (int mm = 0; mm < 3; mm++)
-							{
-							outF << "+(" << signs1[(k + mm) % 3] << ")*" << momenta_names[mm];
-							}*/
-
-							outF << "]*Cos[";
-							cos2 << "*Cos[";
-							total_empty1 = true;
-							total_empty2 = true;
-							for (int mm = 0; mm<3; mm++)
-							{
-								findCos(m, matrix_size, a_ops_l[i].node[(k + mm) % 3], da, db);
-								if (da != 0 || db != 0)
-								{
-									total_empty1 = false;
-									if (mm != 0)outF << "+";
-									if (signs1[(k + mm) % 3] == -1)//знак плюс
-									{
-										da *= -1;
-										db *= -1;
-									}
-									if_empty = true;
-									if (da != 0)
-									{
-										if (mm != 2)
-											outF << momenta_names[mm] << "a*" << da;
-										else
-										{
-											momenta_3.str("");
-											print_3_momenta(momenta_3, signs1, 'a', k);
-											outF << "(" << momenta_3.str() << ")*" << da;
-										}
-										if_empty = false;
-									}
-									if (db != 0)
-									{
-										if (!if_empty) outF << "+"; //есть член с da "+", нет члена с da, + не нужен
-
-										outF << momenta_names[mm] << "b*" << db;
-									}
-
-								}
-
-
-								findCos(m, matrix_size, a_ops_l[j].node[out_pair[l][(k + mm) % 3]], da, db);
-								//cos2 << "+" << signs2[out_pair[l][(k + mm) % 3]] << "*(" << momenta_names[mm] << "a*" << da << "+" << momenta_names[mm] << "b*" << db << ")";
-								if (da != 0 || db != 0)
-								{
-									total_empty2 = false;
-									if (mm != 0) cos2 << "+";
-									if (signs2[out_pair[l][(k + mm) % 3]] == -1)//знак плюс
-									{
-										da *= -1;
-										db *= -1;
-									}
-									if_empty = true;
-									if (da != 0)
-									{
-										cos2 << momenta_names[mm] << "a*" << da;
-										if_empty = false;
-									}
-									if (db != 0)
-									{
-										if (!if_empty)//есть член с da "+", нет члена с da, + не нужен
-											cos2 << "+";
-										cos2 << momenta_names[mm] << "b*" << db;
-									}
-
-								}
-							}
-							if (total_empty1)
-								outF << "0";
-							outF << "]";
-							outF << cos2.str();
-							if (total_empty2)
-								outF << "0";
-							outF << "]";
-
-						}
-					}
-				}
-			}
-		}
-	}
-
-	void clearTerms()
-	{
-		shorterTerms.clear();
-		a_ops_l.clear();
-		cors.clear();
-	}
-	bool PrintAll(ofstream &F)
-	{
-
-		for (int i = 0; i < cors.size(); i++)
-		{
-			cors[i].print(F, a_amount);
-			if (i != cors.size() - 1)
-				F << "+";
-		}
-		if (cors.size() == 0)
-			return false;
-		else
-			return true;
-	}
-	
-	bool PrintAllAop(ofstream &F)
-	{
-		for (int i = 0; i < a_ops_l.size(); i++)
-		{
-			a_ops_l[i].printAterm(F, m,matrix_size);
-			if (i != a_ops_l.size() - 1)
-				F << "+";
-		}
-		if (a_ops_l.size() == 0)
-			return false;
-		else
-			return true;
-	}
-
-};
-
-//end new class
-
-class groundEnergy
-{
-	struct trigPowers //for coeeficients in case of rotation
-	{
-		int cosPower;
-		int sinPower;
-		double value;
-		bool operator==(const trigPowers& right)const
-		{
-			return (cosPower == right.cosPower) && (sinPower == right.sinPower);
+			std::ostringstream out;
+			out << " " << k.coeff << " " << k.n << " " << k.coeff << " ";
+			for (auto elem : k.names)
+				out << elem << " ";
+			for (auto elem : k.node)
+				out << elem << " ";
+			std::string s = out.str();
+			return (std::hash<string>()(s));
 		}
 	};
-	vector<double> energy;
-	vector<trigPowers> trigEnergy[N];
-	double spin;
-	bool ifRotation;
+}
+namespace std{
+	template <>
+	struct hash<AopXZRotate>
+	{
+		std::size_t operator()(const AopXZRotate& k) const
+		{
+			std::ostringstream out;
+			out << " " << k.aop.coeff << " " << k.aop.n << " " << k.aop.coeff << " ";
+			for (auto elem : k.aop.names)
+				out << elem << " ";
+			for (auto elem : k.aop.node)
+				out << elem << " ";
+			out << k.sz_power << " ";
 
-public:
-	void set(double factor)
-	{
-		this->spin = factor;
-	}
-	void addTerm(int order, term t1)
-	{
-		while (energy.size() <= order)
-			energy.push_back(0);
-		if (t1.len == -1)// C-case
-		{
-			energy[order] += t1.value;
-		}
-		else
-		{
-			double res = t1.value;
-			for (int i = 0; i < t1.len; i++)
-				res *= spin;
-			res /= t1.len;
-			energy[order] += res;
-		}
-	}
-	void clearTerms()
-	{
-		energy.clear();
-		for (int i = 0; i < N; i++)
-			trigEnergy[i].clear();
-	}
-	double returnE(int order)
-	{
-		if (order <= energy.size())
-		{
-			return energy[order];
-		}
-		else
-			return 99999;
-	}
-	//rotation case
-	void addTermRotation(int order, term t1)
-	{
-		bool flag = false;//no such term by efault
-		trigPowers cur;
-		cur.value = t1.value;
-		cur.sinPower = 0;
-		cur.cosPower = 0;
+			out << k.trc.getPowers();
+			std::string s = out.str();
 
-		if (t1.len != -1)// not C-case
-		{
-			cur.value /= t1.len;
-			for (int i = 0; i < t1.len; i++)
-				if (t1.ops[i] == 'z')
-					cur.cosPower++;
-				else
-					cur.sinPower++;
+			return (std::hash<string>()(s));
 		}
+	};
+}
 
-		for (int i = 0; i < trigEnergy[order].size(); i++)
-		{
-			if (trigEnergy[order][i] == cur)
-			{
-				trigEnergy[order][i].value += cur.value;
-				flag = true;
+//storage class that contain all current elements
+
+class AopXZRotateStorage{
+public: 
+	//members
+	std::unordered_map<AopXZRotate, double> storage; //for terms with trigonometry coeffs
+	std::vector<std::unordered_map<a_op, double>> storage_numerical;//for terms with numeric values only
+	int **matrix; //matrix vith node numbers
+	int matrix_size;
+	bool analytical_mode; //true- analytical, false -numerical;
+	double angle_start;
+	double angle_finish;
+	double angle_step;
+	double sz;
+
+	//methods
+	void set(int **Matrix, int Matrix_size, bool Mode, double Angle_start, double Angle_finish, double Angle_step,double Sz=-0.5)
+	{
+		matrix = Matrix;
+		matrix_size = Matrix_size;
+		analytical_mode = Mode;
+
+		if (analytical_mode == false) {
+			
+			angle_start = Angle_start;
+			angle_step = Angle_step;
+			angle_finish = Angle_finish;
+			double angle_cur = angle_start;
+			while (angle_cur <= angle_finish) {
+				storage_numerical.push_back(std::unordered_map<a_op, double>());
+					angle_cur += Angle_step;
 			}
 		}
-		if (!flag)
-			trigEnergy[order].push_back(cur);
+		sz = Sz;
 	}
-	void printTermRotation(ostream& out, int order)
+	
+	void clearTerms()
 	{
-		for (int i = 0; i < trigEnergy[order].size(); i++)
+		storage.clear();
+		for (unsigned int i = 0; i < storage_numerical.size();i++) {
+			storage_numerical[i].clear();
+		}
+		storage_numerical.clear();
+	}
+
+	std::vector<std::pair<int, int>> generate_pairs(int n) {
+		//√енерирует все возможные пары дл€ данного терма
+		std::vector<std::pair<int, int>> pairs;
+		for (int i = 0; i < n; i++)	{
+			for (int j = i + 1; j < n; j++) {
+				pairs.push_back(std::pair<int, int>::pair(i, j));
+			}
+		}
+		return pairs;
+	}
+
+	void add_numerical(AopXZRotate &current) {
+		double angle_cur = angle_start;
+		std::vector<std::unordered_map<a_op, double>>::iterator it_vec = storage_numerical.begin();
+		std::unordered_map<a_op, double>::iterator it_map;
+		double coeff_correction;
+		while (angle_cur < angle_finish) {
+			//convert beta-trigonometry to 
+			coeff_correction = current.trc.return_coeff(angle_cur);
+			//convert sz to numeric
+			for (unsigned int i = 0; i < current.sz_power; i++)
+				coeff_correction *= sz;
+			//look for the same term
+			(*it_vec).find(current.aop);
+			it_map = (*it_vec).find(current.aop);
+			if (it_map != it_vec->end()){
+				it_map->second += coeff_correction*current.aop.coeff;
+			}
+			else {
+				it_vec->insert({ current.aop, coeff_correction*current.aop.coeff });
+			}
+
+			it_vec++;//go to next point's storage
+			angle_cur += angle_step;
+		}
+	}
+
+	void ConvertToBilinear(term t) {
+		if (t.len == -1) return; //no action in C-case
+		AopXZRotate current;
+		//select only z-terms
+		current.aop.n = 2;
+		current.aop.names.push_back('p');
+		current.aop.names.push_back('m');
+		current.aop.node.push_back(0);
+		current.aop.node.push_back(0);
+		current.aop.coeff = t.value;
+		current.sz_power = t.len - 1; //amount of sz multipliers equal length-1
+
+		//for correct sign applies multiplier "-2*sz". It's equal to sign of (a+)(a) in case 
+		// sz=+-1/2;
+		current.sz_power++;
+		current.aop.coeff *= -2;
+		//end sign 
+
+		
+		for (unsigned int i = 0; i < t.len; i++) {
+			if (t.ops[i] != 'z')
+			{
+				//inc amount of Sin[beta]=2*Sin[beta/2]*Cos[beta/2] (p/m case)
+				current.trc.incCoeff(2, 1);
+				current.trc.incCoeff(3, 1); 
+				current.aop.coeff *= 2;
+			}
+			else
+				current.trc.incCoeff(0,1);//inc amount of Cos[beta] (z case)
+		}
+		if (analytical_mode == true) {
+			std::unordered_map<AopXZRotate, double>::iterator it = storage.find(current);
+			if (it != storage.end()) it->second += current.aop.coeff; //add value to existed element
+			else storage.insert({ current, current.aop.coeff }); //add new element;
+		}
+		else {
+			add_numerical(current);
+		}
+		
+		
+		//check if enough operators fo pm case
+		if (t.len < 2) return; //exit in case when not enough
+
+		//select all combination of 2 operators as pm
+		std::vector<std::pair<int, int>> pairs = generate_pairs(t.len);
+		for (auto elem:pairs) {
+			//Sz=Cos[beta]*Sz'+(-0.5)*Sin[beta]*Sp'+(-0.5)*Sin[beta]*Sm'
+			//Sp=Sin[beta]*Sz'+Cos^2[beta/2]*Sp'+(-1)*Sin^2[beta/2]*Sm'
+			//Sp=Sin[beta]*Sz'-Cos^2[beta/2]*Sp'-Sin^2[beta/2]*Sm'
+			
+			//check all possible combinations 
+			for (unsigned int i = 0; i < 4; i++) { //try all combinations 4: pp,pm,mp,mm
+				current.clear();
+				current.aop.n = 2;
+				current.aop.coeff = t.value;
+				//first operator
+				current.aop.node.push_back(t.nums[elem.first]); //set first node-number
+				if (arr[i][0] == 0){ //select Sp' -term for first a-operator
+					current.aop.names.push_back('p');
+					switch (t.ops[elem.first])	{
+					case 'z':
+						current.aop.coeff *= -0.5;
+						current.aop.coeff *= 2;	   //Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
+						current.trc.incCoeff(2, 1);//Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
+						current.trc.incCoeff(3, 1);//Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
+						break;
+					case 'p':
+						//current.aop.coeff *= 1;
+						current.trc.incCoeff(2,2);//Cos^2[beta/2]
+						break;
+					case 'm':
+						current.aop.coeff *= -1;
+						current.trc.incCoeff(3,2);//Sin^2[beta/2]
+						break;
+					}
+				}
+				else{ //select Sm-term for first a-operator
+					current.aop.names.push_back('m');
+					switch (t.ops[elem.first])	{
+					case 'z':
+						current.aop.coeff *= -0.5;
+						current.aop.coeff *= 2;    //Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
+						current.trc.incCoeff(2, 1);//Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
+						current.trc.incCoeff(3, 1);//Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
+						break;
+					case 'p':
+						current.aop.coeff *= -1;
+						current.trc.incCoeff(3,2);//Sin^2[beta/2]
+						break;
+					case 'm':
+						//current.aop.coeff *= 1;
+						current.trc.incCoeff(2,2);//Cos^2[beta/2]
+						break;
+					}
+				}
+
+				//second operator
+				current.aop.node.push_back(t.nums[elem.second]); //set first node-number
+
+				if (arr[i][1] == 0){ //select Sp -term for second a-operator
+					current.aop.names.push_back('p');
+					switch (t.ops[elem.second])	{
+					case 'z':
+						current.aop.coeff *= -0.5;
+						current.aop.coeff *= 2;		//Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
+						current.trc.incCoeff(2, 1); //Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
+						current.trc.incCoeff(3, 1); //Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
+						break;
+					case 'p':
+						//current.aop.coeff *= 1;
+						current.trc.incCoeff(2,2);//Cos^2[beta/2]
+						break;
+					case 'm':
+						current.aop.coeff *= -1;
+						current.trc.incCoeff(3,2);//Sin^2[beta/2]
+						break;
+					}
+				}
+				else{ //select Sm-term for second a-operator
+					current.aop.names.push_back('m');
+					switch (t.ops[elem.second])	{
+					case 'z':
+						current.aop.coeff *= -0.5;
+						current.aop.coeff *= 2;		//Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
+						current.trc.incCoeff(2, 1); //Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
+						current.trc.incCoeff(3, 1); //Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
+						break;
+					case 'p':
+						current.aop.coeff *= -1;
+						current.trc.incCoeff(3,2);//Sin^2[beta/2]
+						break;
+					case 'm':
+						//current.aop.coeff *= 1;
+						current.trc.incCoeff(2,2);//Cos^2[beta/2]
+						break;
+					}
+				}
+				//TODO add trig factors from "z-replaced" terms
+				int skip = elem.first;
+				for (unsigned int i = 0; i < t.len; i++) {
+					if (i != elem.first) {
+						switch (t.ops[i]) {
+							//Sz=Cos[beta]*Sz'+(-0.5)*Sin[beta]*Sp'+(-0.5)*Sin[beta]*Sm'
+							//Sp=Sin[beta]*Sz'+Cos^2[beta/2]*Sp'+(-1)*Sin^2[beta/2]*Sm'
+							//Sp=Sin[beta]*Sz'-Cos^2[beta/2]*Sp'-Sin^2[beta/2]*Sm'
+						case 'z': 
+							current.trc.incCoeff(0, 1); 
+							break;
+						case 'p': 
+							current.aop.coeff *= 2;		//Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
+							current.trc.incCoeff(2, 1); //Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
+							current.trc.incCoeff(3, 1); //Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
+							break;
+						case 'm': 
+							current.aop.coeff *= 2;		//Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
+							current.trc.incCoeff(2, 1); //Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
+							current.trc.incCoeff(3, 1); //Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
+							break;
+						}
+					}
+					else
+						skip = elem.second;
+				}
+
+				current.aop.coeff /= t.len; //according to duplication of translationally invariant routes
+				current.sz_power = t.len - 2;
+				
+				if (analytical_mode == true){
+					std::unordered_map<AopXZRotate, double>::iterator it = storage.find(current);
+					if (it != storage.end()) it->second += current.aop.coeff; //add value to existed element
+					else storage.insert({ current, current.aop.coeff }); //add new element;
+				}
+				else{
+					add_numerical(current);
+				}
+			}
+		}
+	}
+
+	void print(ofstream &F)
+	{
+		F.precision(8);
+		F << std::fixed;
+		for (auto elem = storage.begin(); elem != storage.end();++elem)
 		{
-			out << trigEnergy[order][i].value << "*Cos[beta]^" << trigEnergy[order][i].cosPower << "*Sin[beta]^" << trigEnergy[order][i].sinPower << "*Sz^" << trigEnergy[order][i].cosPower + trigEnergy[order][i].sinPower;
-			if (i != trigEnergy[order].size() - 1)
-				out << "+";
+			if (abs(elem->second) < 0.00000001) return;
+			F <<"+"<< elem->second << "*";
+			elem->first.aop.printAterm(F, matrix, matrix_size,false);
+			elem->first.trc.printTrigCoeff(F);
+			switch (elem->first.sz_power){
+			case 0: break;
+			case 1: F << "*sz"; break;
+			default: F << "*(sz^" << elem->first.sz_power << ")";
+			}
+			
+		}
+	}
+
+	void print_numerical(std::vector<std::ofstream*> &Fs)
+	{
+		std::vector<std::ofstream*>::iterator it_of = Fs.begin();
+		std::vector<std::unordered_map<a_op, double>>::iterator it_map = storage_numerical.begin();
+		while (it_of < Fs.end()){
+			for (auto &elem:(*it_map)){ 
+				(*(*it_of)) << "+" << elem.second << "*";
+				elem.first.printAterm((*(*it_of)), matrix, matrix_size, false);
+			}
+			it_of++;
+			it_map++;
 		}
 	}
 };
-
-
 
 int** matrix;
 
@@ -1285,19 +457,18 @@ void fillMatrix(int **matrix, int NNN)
 
 }
 
-
-
-
-
 int _tmain(int argc, _TCHAR* argv[])
 {
 
 	cout << min_op_amount << "\n";
 	vector<string> points;
-	ifstream config("config.txt", ios::in);
-	int num_points, min_order, max_order, cur_term_len_min, cur_term_len_max;
+	std::ostringstream fname;
+	fname << config_dir << delim << "config.txt";
+	ifstream config(fname.str(), ios::in);
+	int num_points, min_order, max_order;
 	string tmp;
-	int a_amount;
+	int a_amount,mode,analytical_mode;
+	double angle_start, angle_step, angle_finish;
 	getline(config, tmp);
 	config >> num_points;
 	getline(config, tmp);
@@ -1306,6 +477,15 @@ int _tmain(int argc, _TCHAR* argv[])
 	getline(config, tmp);
 	getline(config, tmp);
 	config >> a_amount;
+	getline(config, tmp);
+	getline(config, tmp);
+	config >> mode;//
+	getline(config, tmp);
+	getline(config, tmp);
+	config >> analytical_mode;//
+	getline(config, tmp);
+	getline(config, tmp);
+	config >> angle_start>> angle_step>> angle_finish;
 	config.close();
 	///init matrix
 	int size = max(1 + ((max_order) / 2) * 2, 1 + (max_order - 2) * 2);
@@ -1316,8 +496,9 @@ int _tmain(int argc, _TCHAR* argv[])
 	fillMatrix(m, max_order);
 	//end init
 
-
-	ifstream fpoints("points.txt", ios::in);
+	fname.str("");
+	fname << config_dir << delim << "points.txt";
+	ifstream fpoints(fname.str(), ios::in);
 	string s, tmp_s;
 	for (int i = 0; i < num_points; i++)
 	{
@@ -1327,7 +508,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	fpoints.close();
 
 
-	ostringstream fname;
+
 	double temp_val;
 
 	for (int i = 0; i < num_points; i++)
@@ -1344,41 +525,79 @@ int _tmain(int argc, _TCHAR* argv[])
 			factor = -0.5;
 		converter conv1;
 		groundEnergy ge;
+		AopXZRotateStorage rotate_excitation_storage;
 		term t1;
 
-		ofstream out, out_energy,out_rot;
+		ofstream out, out_energy, out_rot, out_rot_excitation;
+		ofstream *out_rot_cur;
 
 		fname.str("");
-		fname << "Results\\res_" << points[i] << "_" << max_order << "_" << a_amount << ".txt";
+		fname << out_res << delim << "res_" << points[i] << "_" << max_order << "_" << a_amount << ".txt";
 		out.open(fname.str(), ios::out);
 		out << "{";
 		fname.str("");
-		fname << "Results\\energy_res_" << points[i] << "_" << max_order << "_" << a_amount << ".txt";
+		fname << out_res << delim << "energy_res_" << points[i] << "_" << max_order << "_" << a_amount << ".txt";
 		out_energy.open(fname.str(), ios::out);
 		out_energy << "{";
+
+		//init of rotate energy file
 		fname.str("");
-		fname << "Results\\energy_rot_" << points[i] << "_" << max_order << "_" << a_amount << ".txt";
+		fname << out_res << delim << "energy_rot_" << points[i] << "_" << max_order << "_" << a_amount << ".txt";
 		out_rot.open(fname.str(), ios::out);
 		out_rot << "{";
+		//end init
+
+		//init of rotate excitations file
+		fname.str("");
+		fname << out_res << delim << "excitations_rot_" << points[i] << "_" << max_order << "_" << a_amount << ".txt";
+		out_rot_excitation.open(fname.str(), ios::out);
+		out_rot_excitation << "{";
+		//end init
+
+		//init of array for numerical excitations files
+		std::vector<std::ofstream*> out_rot_excitation_numericals;
+		double angle_cur = angle_start;
+		while (angle_cur<angle_finish) {
+			fname.str("");
+			fname << out_res << delim << points[i] << delim << "excitations_rot_" << points[i] << "_" << max_order << "_" << a_amount << "_" << angle_cur << ".txt";
+			out_rot_cur = new ofstream();
+			(*out_rot_cur).open(fname.str(), ios::out);
+			(*out_rot_cur) << "{";
+			(*out_rot_cur) << std::fixed;
+			(*out_rot_cur).precision(8);
+			out_rot_excitation_numericals.push_back(out_rot_cur);
+			angle_cur += angle_step;
+		}
+		//end init
+
 		conv1.set(factor, a_amount, m, size);
+		
 		ge.set(factor);
 		for (int j = min_order; j <= max_order; j++)
 		{
 			cout << "Order " << j << "\n";
 			conv1.clearTerms();
 			ge.clearTerms();
+			rotate_excitation_storage.clearTerms();
+			//Test  
+			cout << "\n\n CHANGE MIN OP TO 1!!!!!!!!!!!!!!\n\n";
+			//end Test block
 			for (int k = min_op_amount; k <= j; k++)
 			{
 				cout << "SubOrder: " << k << "\n";
 				fname.str("");
-				fname << "d:\\Andrew\\Practice\\!!!_Last Set\\6.2 Collect Terms\\6.2 Collect Terms\\input\\" << points[i] << "\\" << j << "_results_" << points[i] << "_" << k << ".txt";
+				fname << "d:\\Andrew\\Practice\\!!!_Last Set\\6.2 Collect Terms\\6.2 Collect Terms" << delim << inp_res << delim << points[i] << "\\" << j << "_results_" << points[i] << "_" << k << out_file_end;
 
 				ifstream cur(fname.str(), ios::in);
 
 				t1.setOrder(j);
-
+				rotate_excitation_storage.set(m, size, analytical_mode != 0, angle_start, angle_finish, angle_step);
+				int str_amount = 0;
 				while (!cur.eof())
 				{
+					str_amount++;
+					if (str_amount % 100 == 0)
+						cout << str_amount << " ";
 					getline(cur, s);
 					if (s.length() > 0)
 					{
@@ -1388,42 +607,94 @@ int _tmain(int argc, _TCHAR* argv[])
 
 
 						t1.decompose(tmp_s, temp_val);
-
-						if (t1.type)//for energy
-							ge.addTerm(j, t1);
-
-						ge.addTermRotation(j, t1);
-
-						if (t1.len>0)//for excitations
-							conv1.decomposeTerm(t1);
-
+						switch (mode){
+						case 0:
+							if (t1.type)//for energy
+								ge.addTerm(j, t1);
+							break;
+						case 1:
+							ge.addTermRotation(j, t1);
+							break;
+						case 2:
+							if (t1.len > 0)//for excitations
+								conv1.decomposeTerm(t1);
+							break;
+						case 3:
+							if (t1.len > 0)//for rotate excitations
+								rotate_excitation_storage.ConvertToBilinear(t1);
+							break;
+						}
 					}
 				}
 				cur.close();
 			}
-			conv1.convertToAop();
-			if (a_amount = 2)
-			{
-				out_energy << ge.returnE(j);
-				if (!conv1.PrintAllAop(out))
-					out << "0";
-				if (j != max_order)
+
+
+			std::vector<std::ofstream*>::iterator it = out_rot_excitation_numericals.begin();
+			switch (mode){
+
+			case 0:
+				if (a_amount = 2)
 				{
-					out << ",";
-					out_energy << ",";
+					out_energy << ge.returnE(j);
+					if (j != max_order)
+					{
+						out << ",";
+						out_energy << ",";
+					}
 				}
+				break;
+			case 1:
+				ge.printTermRotation(out_rot, j);
+				if (j != max_order)
+					out_rot << ",";
+				break;
+			case 2:
+				if (a_amount = 2)
+				{
+					conv1.convertToAop();
+					if (!conv1.PrintAllAop(out))
+						out << "0";
+				}
+				break;
+			case 3:
+				switch (analytical_mode){
+				case 0:
+					rotate_excitation_storage.print_numerical(out_rot_excitation_numericals);
+					
+					if (j != max_order){
+						while (it < out_rot_excitation_numericals.end()) {
+							(**it)<<",";
+							it++;
+						}
+					}
+						
+					break;
+				case 1:
+					rotate_excitation_storage.print(out_rot_excitation);
+					if (j != max_order)
+						out_rot_excitation << ",";
+					break;
+				}
+				break;
 			}
-			ge.printTermRotation(out_rot, j);
-			if (j != max_order)
-				out_rot << ",";
+			std::cout << "Done!\n";
 		}
 		out << "}";
 		out_energy << "}";
 		out_rot << "}";
+		out_rot_excitation << "}";
 
 		out.close();
 		out_energy.close();
 		out_rot.close();
+		out_rot_excitation.close();
+		std::vector<std::ofstream*>::iterator it = out_rot_excitation_numericals.begin();
+		while (it < out_rot_excitation_numericals.end()) {
+			(**it).close();
+			delete (*it);
+			it++;
+		}
 	}
 
 	return 0;
