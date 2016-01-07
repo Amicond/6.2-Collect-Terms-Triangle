@@ -1,12 +1,19 @@
 Num of points
 1
 Start order | Finish Order 
-6 6
+1 7
 A operators amount
 2
-Mode(0- ; 1- ; 2- ; 3- for Rotattional excitations)
-3
-Analutical-1 numerical-0
+Mode(0- ; 1- ; 2- ; 3- for Rotattional excitations; 4- energy rotation antiferro case)
+4
+Analytical-1, numerical-0
 0
 Angle-Start Angle-Step Angle-Finish
-2.0 0.1 3.2
+2.05 0.1 2.04
+2.6 0.1 3.11
+
+
+
+
+
+

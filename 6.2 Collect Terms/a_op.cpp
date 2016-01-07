@@ -50,8 +50,8 @@ void a_op::printAterm(std::ofstream &F, int **m, int size, bool if_print_coeff)c
 			//if (node[0]!=0)
 			//	F << "\n\n Strange nodes \n\n";
 			int da1, db1, da2, db2;
-			Cos::findCos(m, size, node[0], da1, db1);
-			Cos::findCos(m, size, node[1], da2, db2);
+			Cos::findCos( node[0], da1, db1);
+			Cos::findCos( node[1], da2, db2);
 			F << "*Cos[";
 			switch ((da2 - da1)){
 			case 0: break;

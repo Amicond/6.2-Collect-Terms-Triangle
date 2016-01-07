@@ -7,26 +7,21 @@
 #include "converter.h"
 #include "term.h"
 #include "a_op.h"
+#include "a_op_couple.h"
 #include "ground_energy.h"
 #include "trig_coefficients.h"
 #include "a_op_xz_rotate.h"
+#include "a_op_xz_rotate_storage.h"
 
 using namespace std;
 
 
-const int min_op_amount = 4;
+const int min_op_amount = 1;
 const string delim = "\\";
 const string config_dir = "config";
 const string inp_res = "input_rot";
 const string out_res = "Results_rot";
 const string out_file_end = "_rot.txt";
-
-//Trigonometry coefficients for XZ spin-rotation
-
-
-
-int arr[4][2] = { { 0, 0 }, { 0, 1 }, { 1, 0 }, { 1, 1 } };
-
 
 
 //Hash functions for unordered maps
@@ -42,327 +37,11 @@ namespace std{
 				out << elem << " ";
 			for (auto elem : k.node)
 				out << elem << " ";
-			std::string s = out.str();
-			return (std::hash<string>()(s));
-		}
-	};
-}
-namespace std{
-	template <>
-	struct hash<AopXZRotate>
-	{
-		std::size_t operator()(const AopXZRotate& k) const
-		{
-			std::ostringstream out;
-			out << " " << k.aop.coeff << " " << k.aop.n << " " << k.aop.coeff << " ";
-			for (auto elem : k.aop.names)
-				out << elem << " ";
-			for (auto elem : k.aop.node)
-				out << elem << " ";
-			out << k.sz_power << " ";
-
-			out << k.trc.getPowers();
-			std::string s = out.str();
-
-			return (std::hash<string>()(s));
+			return (std::hash<string>()(out.str()));
 		}
 	};
 }
 
-//storage class that contain all current elements
-
-class AopXZRotateStorage{
-public: 
-	//members
-	std::unordered_map<AopXZRotate, double> storage; //for terms with trigonometry coeffs
-	std::vector<std::unordered_map<a_op, double>> storage_numerical;//for terms with numeric values only
-	int **matrix; //matrix vith node numbers
-	int matrix_size;
-	bool analytical_mode; //true- analytical, false -numerical;
-	double angle_start;
-	double angle_finish;
-	double angle_step;
-	double sz;
-
-	//methods
-	void set(int **Matrix, int Matrix_size, bool Mode, double Angle_start, double Angle_finish, double Angle_step,double Sz=-0.5)
-	{
-		matrix = Matrix;
-		matrix_size = Matrix_size;
-		analytical_mode = Mode;
-
-		if (analytical_mode == false) {
-			
-			angle_start = Angle_start;
-			angle_step = Angle_step;
-			angle_finish = Angle_finish;
-			double angle_cur = angle_start;
-			while (angle_cur <= angle_finish) {
-				storage_numerical.push_back(std::unordered_map<a_op, double>());
-					angle_cur += Angle_step;
-			}
-		}
-		sz = Sz;
-	}
-	
-	void clearTerms()
-	{
-		storage.clear();
-		for (unsigned int i = 0; i < storage_numerical.size();i++) {
-			storage_numerical[i].clear();
-		}
-		storage_numerical.clear();
-	}
-
-	std::vector<std::pair<int, int>> generate_pairs(int n) {
-		//√енерирует все возможные пары дл€ данного терма
-		std::vector<std::pair<int, int>> pairs;
-		for (int i = 0; i < n; i++)	{
-			for (int j = i + 1; j < n; j++) {
-				pairs.push_back(std::pair<int, int>::pair(i, j));
-			}
-		}
-		return pairs;
-	}
-
-	void add_numerical(AopXZRotate &current) {
-		double angle_cur = angle_start;
-		std::vector<std::unordered_map<a_op, double>>::iterator it_vec = storage_numerical.begin();
-		std::unordered_map<a_op, double>::iterator it_map;
-		double coeff_correction;
-		while (angle_cur < angle_finish) {
-			//convert beta-trigonometry to 
-			coeff_correction = current.trc.return_coeff(angle_cur);
-			//convert sz to numeric
-			for (unsigned int i = 0; i < current.sz_power; i++)
-				coeff_correction *= sz;
-			//look for the same term
-			(*it_vec).find(current.aop);
-			it_map = (*it_vec).find(current.aop);
-			if (it_map != it_vec->end()){
-				it_map->second += coeff_correction*current.aop.coeff;
-			}
-			else {
-				it_vec->insert({ current.aop, coeff_correction*current.aop.coeff });
-			}
-
-			it_vec++;//go to next point's storage
-			angle_cur += angle_step;
-		}
-	}
-
-	void ConvertToBilinear(term t) {
-		if (t.len == -1) return; //no action in C-case
-		AopXZRotate current;
-		//select only z-terms
-		current.aop.n = 2;
-		current.aop.names.push_back('p');
-		current.aop.names.push_back('m');
-		current.aop.node.push_back(0);
-		current.aop.node.push_back(0);
-		current.aop.coeff = t.value;
-		current.sz_power = t.len - 1; //amount of sz multipliers equal length-1
-
-		//for correct sign applies multiplier "-2*sz". It's equal to sign of (a+)(a) in case 
-		// sz=+-1/2;
-		current.sz_power++;
-		current.aop.coeff *= -2;
-		//end sign 
-
-		
-		for (unsigned int i = 0; i < t.len; i++) {
-			if (t.ops[i] != 'z')
-			{
-				//inc amount of Sin[beta]=2*Sin[beta/2]*Cos[beta/2] (p/m case)
-				current.trc.incCoeff(2, 1);
-				current.trc.incCoeff(3, 1); 
-				current.aop.coeff *= 2;
-			}
-			else
-				current.trc.incCoeff(0,1);//inc amount of Cos[beta] (z case)
-		}
-		if (analytical_mode == true) {
-			std::unordered_map<AopXZRotate, double>::iterator it = storage.find(current);
-			if (it != storage.end()) it->second += current.aop.coeff; //add value to existed element
-			else storage.insert({ current, current.aop.coeff }); //add new element;
-		}
-		else {
-			add_numerical(current);
-		}
-		
-		
-		//check if enough operators fo pm case
-		if (t.len < 2) return; //exit in case when not enough
-
-		//select all combination of 2 operators as pm
-		std::vector<std::pair<int, int>> pairs = generate_pairs(t.len);
-		for (auto elem:pairs) {
-			//Sz=Cos[beta]*Sz'+(-0.5)*Sin[beta]*Sp'+(-0.5)*Sin[beta]*Sm'
-			//Sp=Sin[beta]*Sz'+Cos^2[beta/2]*Sp'+(-1)*Sin^2[beta/2]*Sm'
-			//Sp=Sin[beta]*Sz'-Cos^2[beta/2]*Sp'-Sin^2[beta/2]*Sm'
-			
-			//check all possible combinations 
-			for (unsigned int i = 0; i < 4; i++) { //try all combinations 4: pp,pm,mp,mm
-				current.clear();
-				current.aop.n = 2;
-				current.aop.coeff = t.value;
-				//first operator
-				current.aop.node.push_back(t.nums[elem.first]); //set first node-number
-				if (arr[i][0] == 0){ //select Sp' -term for first a-operator
-					current.aop.names.push_back('p');
-					switch (t.ops[elem.first])	{
-					case 'z':
-						current.aop.coeff *= -0.5;
-						current.aop.coeff *= 2;	   //Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
-						current.trc.incCoeff(2, 1);//Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
-						current.trc.incCoeff(3, 1);//Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
-						break;
-					case 'p':
-						//current.aop.coeff *= 1;
-						current.trc.incCoeff(2,2);//Cos^2[beta/2]
-						break;
-					case 'm':
-						current.aop.coeff *= -1;
-						current.trc.incCoeff(3,2);//Sin^2[beta/2]
-						break;
-					}
-				}
-				else{ //select Sm-term for first a-operator
-					current.aop.names.push_back('m');
-					switch (t.ops[elem.first])	{
-					case 'z':
-						current.aop.coeff *= -0.5;
-						current.aop.coeff *= 2;    //Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
-						current.trc.incCoeff(2, 1);//Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
-						current.trc.incCoeff(3, 1);//Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
-						break;
-					case 'p':
-						current.aop.coeff *= -1;
-						current.trc.incCoeff(3,2);//Sin^2[beta/2]
-						break;
-					case 'm':
-						//current.aop.coeff *= 1;
-						current.trc.incCoeff(2,2);//Cos^2[beta/2]
-						break;
-					}
-				}
-
-				//second operator
-				current.aop.node.push_back(t.nums[elem.second]); //set first node-number
-
-				if (arr[i][1] == 0){ //select Sp -term for second a-operator
-					current.aop.names.push_back('p');
-					switch (t.ops[elem.second])	{
-					case 'z':
-						current.aop.coeff *= -0.5;
-						current.aop.coeff *= 2;		//Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
-						current.trc.incCoeff(2, 1); //Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
-						current.trc.incCoeff(3, 1); //Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
-						break;
-					case 'p':
-						//current.aop.coeff *= 1;
-						current.trc.incCoeff(2,2);//Cos^2[beta/2]
-						break;
-					case 'm':
-						current.aop.coeff *= -1;
-						current.trc.incCoeff(3,2);//Sin^2[beta/2]
-						break;
-					}
-				}
-				else{ //select Sm-term for second a-operator
-					current.aop.names.push_back('m');
-					switch (t.ops[elem.second])	{
-					case 'z':
-						current.aop.coeff *= -0.5;
-						current.aop.coeff *= 2;		//Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
-						current.trc.incCoeff(2, 1); //Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
-						current.trc.incCoeff(3, 1); //Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
-						break;
-					case 'p':
-						current.aop.coeff *= -1;
-						current.trc.incCoeff(3,2);//Sin^2[beta/2]
-						break;
-					case 'm':
-						//current.aop.coeff *= 1;
-						current.trc.incCoeff(2,2);//Cos^2[beta/2]
-						break;
-					}
-				}
-				//TODO add trig factors from "z-replaced" terms
-				int skip = elem.first;
-				for (unsigned int i = 0; i < t.len; i++) {
-					if (i != elem.first) {
-						switch (t.ops[i]) {
-							//Sz=Cos[beta]*Sz'+(-0.5)*Sin[beta]*Sp'+(-0.5)*Sin[beta]*Sm'
-							//Sp=Sin[beta]*Sz'+Cos^2[beta/2]*Sp'+(-1)*Sin^2[beta/2]*Sm'
-							//Sp=Sin[beta]*Sz'-Cos^2[beta/2]*Sp'-Sin^2[beta/2]*Sm'
-						case 'z': 
-							current.trc.incCoeff(0, 1); 
-							break;
-						case 'p': 
-							current.aop.coeff *= 2;		//Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
-							current.trc.incCoeff(2, 1); //Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
-							current.trc.incCoeff(3, 1); //Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
-							break;
-						case 'm': 
-							current.aop.coeff *= 2;		//Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
-							current.trc.incCoeff(2, 1); //Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
-							current.trc.incCoeff(3, 1); //Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
-							break;
-						}
-					}
-					else
-						skip = elem.second;
-				}
-
-				current.aop.coeff /= t.len; //according to duplication of translationally invariant routes
-				current.sz_power = t.len - 2;
-				
-				if (analytical_mode == true){
-					std::unordered_map<AopXZRotate, double>::iterator it = storage.find(current);
-					if (it != storage.end()) it->second += current.aop.coeff; //add value to existed element
-					else storage.insert({ current, current.aop.coeff }); //add new element;
-				}
-				else{
-					add_numerical(current);
-				}
-			}
-		}
-	}
-
-	void print(ofstream &F)
-	{
-		F.precision(8);
-		F << std::fixed;
-		for (auto elem = storage.begin(); elem != storage.end();++elem)
-		{
-			if (abs(elem->second) < 0.00000001) return;
-			F <<"+"<< elem->second << "*";
-			elem->first.aop.printAterm(F, matrix, matrix_size,false);
-			elem->first.trc.printTrigCoeff(F);
-			switch (elem->first.sz_power){
-			case 0: break;
-			case 1: F << "*sz"; break;
-			default: F << "*(sz^" << elem->first.sz_power << ")";
-			}
-			
-		}
-	}
-
-	void print_numerical(std::vector<std::ofstream*> &Fs)
-	{
-		std::vector<std::ofstream*>::iterator it_of = Fs.begin();
-		std::vector<std::unordered_map<a_op, double>>::iterator it_map = storage_numerical.begin();
-		while (it_of < Fs.end()){
-			for (auto &elem:(*it_map)){ 
-				(*(*it_of)) << "+" << elem.second << "*";
-				elem.first.printAterm((*(*it_of)), matrix, matrix_size, false);
-			}
-			it_of++;
-			it_map++;
-		}
-	}
-};
 
 int** matrix;
 
@@ -460,6 +139,12 @@ void fillMatrix(int **matrix, int NNN)
 int _tmain(int argc, _TCHAR* argv[])
 {
 
+	/*
+	int iii;//cosine test
+	std::cout << cos(3.1415 / 3) << std::endl;
+	std::cin >> iii;
+	return 0;*/
+
 	cout << min_op_amount << "\n";
 	vector<string> points;
 	std::ostringstream fname;
@@ -494,6 +179,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	for (int i = 0; i < size; i++)
 		m[i] = new int[size];
 	fillMatrix(m, max_order);
+	Cos::set(m, size);
 	//end init
 
 	fname.str("");
@@ -528,9 +214,11 @@ int _tmain(int argc, _TCHAR* argv[])
 		AopXZRotateStorage rotate_excitation_storage;
 		term t1;
 
-		ofstream out, out_energy, out_rot, out_rot_excitation;
+		ofstream out, out_energy, out_rot, out_energy_rot_antiferro,out_rot_excitation;
 		ofstream *out_rot_cur;
 
+		
+		
 		fname.str("");
 		fname << out_res << delim << "res_" << points[i] << "_" << max_order << "_" << a_amount << ".txt";
 		out.open(fname.str(), ios::out);
@@ -545,6 +233,15 @@ int _tmain(int argc, _TCHAR* argv[])
 		fname << out_res << delim << "energy_rot_" << points[i] << "_" << max_order << "_" << a_amount << ".txt";
 		out_rot.open(fname.str(), ios::out);
 		out_rot << "{";
+		//end init
+
+		//init of rotate energy file antiferromagnet case
+		fname.str("");
+		fname << out_res << delim << "energy_rot_antiferro_" << points[i] << "_" << max_order << "_" << a_amount << ".txt";
+		out_energy_rot_antiferro.open(fname.str(), ios::out);
+		out_energy_rot_antiferro.precision(10);
+		out_energy_rot_antiferro << fixed;
+		out_energy_rot_antiferro << "{";
 		//end init
 
 		//init of rotate excitations file
@@ -572,7 +269,10 @@ int _tmain(int argc, _TCHAR* argv[])
 
 		conv1.set(factor, a_amount, m, size);
 		
-		ge.set(factor);
+		if (mode==4) //antiferromagnet case
+			ge.set(-0.5,true);
+		else
+			ge.set(factor, true); //all other cases
 		for (int j = min_order; j <= max_order; j++)
 		{
 			cout << "Order " << j << "\n";
@@ -580,8 +280,9 @@ int _tmain(int argc, _TCHAR* argv[])
 			ge.clearTerms();
 			rotate_excitation_storage.clearTerms();
 			//Test  
-			cout << "\n\n CHANGE MIN OP TO 1!!!!!!!!!!!!!!\n\n";
+			//cout << "\n\n CHANGE MIN OP TO 1!!!!!!!!!!!!!!\n\n";
 			//end Test block
+			rotate_excitation_storage.set(m, size, analytical_mode != 0, angle_start, angle_finish, angle_step);
 			for (int k = min_op_amount; k <= j; k++)
 			{
 				cout << "SubOrder: " << k << "\n";
@@ -591,13 +292,15 @@ int _tmain(int argc, _TCHAR* argv[])
 				ifstream cur(fname.str(), ios::in);
 
 				t1.setOrder(j);
-				rotate_excitation_storage.set(m, size, analytical_mode != 0, angle_start, angle_finish, angle_step);
+				
 				int str_amount = 0;
 				while (!cur.eof())
 				{
 					str_amount++;
-					if (str_amount % 100 == 0)
-						cout << str_amount << " ";
+					if (str_amount % 200000 == 0)
+						cout << "Or:" << j << " Sub:" << k << "\n";
+					if (str_amount % 5000 == 0)
+						cout<<str_amount <<" ";
 					getline(cur, s);
 					if (s.length() > 0)
 					{
@@ -613,7 +316,7 @@ int _tmain(int argc, _TCHAR* argv[])
 								ge.addTerm(j, t1);
 							break;
 						case 1:
-							ge.addTermRotation(j, t1);
+								ge.addTermRotation(j, t1);
 							break;
 						case 2:
 							if (t1.len > 0)//for excitations
@@ -623,13 +326,16 @@ int _tmain(int argc, _TCHAR* argv[])
 							if (t1.len > 0)//for rotate excitations
 								rotate_excitation_storage.ConvertToBilinear(t1);
 							break;
+						case 4:
+								ge.addTermRotationAntiferromagnet(j, t1);
+							break;
 						}
 					}
 				}
 				cur.close();
 			}
 
-
+			//defenition is here, because it's impossible to determine iterator in the switch
 			std::vector<std::ofstream*>::iterator it = out_rot_excitation_numericals.begin();
 			switch (mode){
 
@@ -668,7 +374,6 @@ int _tmain(int argc, _TCHAR* argv[])
 							it++;
 						}
 					}
-						
 					break;
 				case 1:
 					rotate_excitation_storage.print(out_rot_excitation);
@@ -677,20 +382,32 @@ int _tmain(int argc, _TCHAR* argv[])
 					break;
 				}
 				break;
+			case 4:
+				ge.printTermRotation(out_energy_rot_antiferro, j);
+				if (j != max_order)
+					out_energy_rot_antiferro << ",";
+				break;
 			}
 			std::cout << "Done!\n";
 		}
 		out << "}";
-		out_energy << "}";
-		out_rot << "}";
-		out_rot_excitation << "}";
-
 		out.close();
+
+		out_energy << "}";
 		out_energy.close();
+
+		out_rot << "}";
 		out_rot.close();
+
+		out_energy_rot_antiferro << "}";
+		out_energy_rot_antiferro.close();
+
+		out_rot_excitation << "}";
 		out_rot_excitation.close();
+		
 		std::vector<std::ofstream*>::iterator it = out_rot_excitation_numericals.begin();
 		while (it < out_rot_excitation_numericals.end()) {
+			(**it) << "}";
 			(**it).close();
 			delete (*it);
 			it++;

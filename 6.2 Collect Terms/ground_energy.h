@@ -18,10 +18,10 @@ class groundEnergy
 	std::vector<double> energy;
 	std::vector<trigPowers> trigEnergy[N];
 	double spin;
-	bool ifRotation;
+	bool ifNumerical;
 
 public:
-	void set(double factor);
+	void set(double factor,bool IfNumerical);
 	
 	void addTerm(unsigned int order, term t1);
 
@@ -31,6 +31,8 @@ public:
 	
 	//rotation case
 	void addTermRotation(int order, term t1);
+
+	void addTermRotationAntiferromagnet(int order, term t1);
 	
 	void printTermRotation(std::ostream& out, int order);
 	

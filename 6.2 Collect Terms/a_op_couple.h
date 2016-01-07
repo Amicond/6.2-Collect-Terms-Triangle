@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #ifndef __A_OP_COUPLE_H_INCLUDED__  
 #define __A_OP_COUPLE_H_INCLUDED__
+
 class a_op_couple{ //special class for bilinear terms
 public:
 	char names[2]; //plus or minus

@@ -2,6 +2,9 @@
 #include "a_op_couple.h"
 #include "cos.h"
 
+
+
+
 bool a_op_couple::operator==(const a_op_couple sec) const
 {
 	if (names[0] != sec.names[0])
@@ -17,10 +20,19 @@ bool a_op_couple::operator==(const a_op_couple sec) const
 
 void a_op_couple::check()
 {
-	if (dx < 0)
+	if (dx < 0)//always positive dx
 	{
 		dx = -dx;
 		dy = -dy;
+	}
+	else if (dx==0&&dy<0)
+	{
+		dy = -dy;
+	}
+	if (names[0] != names[1] && names[0] == 'm') // G-function case for excitations
+	{
+		names[0] = 'p';
+		names[1] = 'm';
 	}
 }
 

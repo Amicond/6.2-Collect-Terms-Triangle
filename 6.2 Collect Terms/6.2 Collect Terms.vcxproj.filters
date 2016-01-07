@@ -51,6 +51,9 @@
     <ClInclude Include="a_op_couple.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="a_op_xz_rotate_storage.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="6.2 Collect Terms.cpp">
@@ -84,6 +87,9 @@
       <Filter>Resource Files</Filter>
     </ClCompile>
     <ClCompile Include="a_op_couple.cpp">
+      <Filter>Resource Files</Filter>
+    </ClCompile>
+    <ClCompile Include="a_op_xz_rotate_storage.cpp">
       <Filter>Resource Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -376,10 +376,10 @@ void converter::convertToCorrections()
 			cur.out[0] = a_ops_l[i].names[0];
 			cur.out[1] = a_ops_l[i].names[1];
 
-			Cos::findCos(m, matrix_size, a_ops_l[i].node[0], da, db);
+			Cos::findCos( a_ops_l[i].node[0], da, db);
 			cur_cos.ka.push_back(da);
 			cur_cos.kb.push_back(db);
-			Cos::findCos(m, matrix_size, a_ops_l[i].node[1], da, db);
+			Cos::findCos( a_ops_l[i].node[1], da, db);
 			cur_cos.ka.push_back(da);
 			cur_cos.kb.push_back(db);
 
@@ -427,13 +427,13 @@ void converter::convertToCorrections()
 				cur_cos.factor = a_ops_l[i].coeff;
 				int da, db;
 
-				Cos::findCos(m, matrix_size, a_ops_l[i].node[nums[0]], da, db);
+				Cos::findCos( a_ops_l[i].node[nums[0]], da, db);
 				cur_cos.ka.push_back(da);
 				cur_cos.kb.push_back(db);
-				Cos::findCos(m, matrix_size, a_ops_l[i].node[nums[1]], da, db);
+				Cos::findCos( a_ops_l[i].node[nums[1]], da, db);
 				cur_cos.ka.push_back(da);
 				cur_cos.kb.push_back(db);
-				Cos::findCos(m, matrix_size, a_ops_l[i].node[nums[2]], da, db);
+				Cos::findCos( a_ops_l[i].node[nums[2]], da, db);
 				cur_cos.ka.push_back(da);
 				cur_cos.kb.push_back(db);
 
@@ -482,16 +482,16 @@ void converter::convertToCorrections()
 				cur_cos.factor = a_ops_l[i].coeff;
 				int da, db;
 
-				Cos::findCos(m, matrix_size, a_ops_l[i].node[nums[0]], da, db);
+				Cos::findCos( a_ops_l[i].node[nums[0]], da, db);
 				cur_cos.ka.push_back(da);
 				cur_cos.kb.push_back(db);
-				Cos::findCos(m, matrix_size, a_ops_l[i].node[nums[1]], da, db);
+				Cos::findCos( a_ops_l[i].node[nums[1]], da, db);
 				cur_cos.ka.push_back(da);
 				cur_cos.kb.push_back(db);
-				Cos::findCos(m, matrix_size, a_ops_l[i].node[nums[2]], da, db);
+				Cos::findCos( a_ops_l[i].node[nums[2]], da, db);
 				cur_cos.ka.push_back(da);
 				cur_cos.kb.push_back(db);
-				Cos::findCos(m, matrix_size, a_ops_l[i].node[nums[3]], da, db);
+				Cos::findCos( a_ops_l[i].node[nums[3]], da, db);
 				cur_cos.ka.push_back(da);
 				cur_cos.kb.push_back(db);
 
@@ -644,7 +644,7 @@ void converter::combine(std::ofstream &outF)
 						total_empty2 = true;
 						for (int mm = 0; mm<3; mm++)
 						{
-							Cos::findCos(m, matrix_size, a_ops_l[i].node[(k + mm) % 3], da, db);
+							Cos::findCos( a_ops_l[i].node[(k + mm) % 3], da, db);
 							if (da != 0 || db != 0)
 							{
 								total_empty1 = false;
@@ -677,7 +677,7 @@ void converter::combine(std::ofstream &outF)
 							}
 
 
-							Cos::findCos(m, matrix_size, a_ops_l[j].node[out_pair[l][(k + mm) % 3]], da, db);
+							Cos::findCos( a_ops_l[j].node[out_pair[l][(k + mm) % 3]], da, db);
 							//cos2 << "+" << signs2[out_pair[l][(k + mm) % 3]] << "*(" << momenta_names[mm] << "a*" << da << "+" << momenta_names[mm] << "b*" << db << ")";
 							if (da != 0 || db != 0)
 							{
