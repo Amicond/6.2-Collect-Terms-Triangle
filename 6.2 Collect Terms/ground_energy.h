@@ -33,6 +33,8 @@ public:
 	void addTermRotation(int order, term t1);
 
 	void addTermRotationAntiferromagnet(int order, term t1);
+
+	void addTermRotation2sublattices(int order, term t1);
 	
 	void printTermRotation(std::ostream& out, int order);
 	

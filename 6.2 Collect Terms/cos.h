@@ -8,6 +8,7 @@ public:
 	static int size; //size of the matrix
 	double factor;
 	std::vector<int> ka, kb;
+	static std::vector<std::pair<int, int>> coords;
 	bool operator ==(Cos c2);
 	static void set(int **M, int  Size);
 	static void Cos::findCos( int n, int &da, int &db);

@@ -4,12 +4,15 @@ Start order | Finish Order
 1 7
 A operators amount
 2
-Mode(0- ; 1- ; 2- ; 3- for Rotattional excitations; 4- energy rotation antiferro case)
-4
-Analytical-1, numerical-0
+Mode(0-energy ferro; 1-energy ferro+rotation ; 2- ; 3- for Rotattional excitations; 4- energy rotation 2sub case; )
+3
+For Rotational excitations: Analytical-1, numerical-0
 0
-Angle-Start Angle-Step Angle-Finish
-2.05 0.1 2.04
+For Rotational excitations: 0 ferro, 1-2sub
+1
+Angle-Start Angle-Step Angle-Finish (If numerical mode for rotational excitations)
+0.0 0.3 3.1
+3.1415 0.2 3.1416
 2.6 0.1 3.11
 
 

@@ -9,6 +9,7 @@ bool groundEnergy::trigPowers:: operator==(const trigPowers& right)const
 {
 	return (cosPower == right.cosPower) && (sinPower == right.sinPower);
 }
+
 void groundEnergy::set(double factor, bool IfNumerical)
 {
 	this->spin = factor;
@@ -103,6 +104,41 @@ void groundEnergy::addTermRotationAntiferromagnet(int order, term t1)
 		{
 			trigEnergy[order][i].value += cur.value;
 			flag = true;
+		}
+	}
+	if (!flag)
+		trigEnergy[order].push_back(cur);
+
+}
+
+void groundEnergy::addTermRotation2sublattices(int order, term t1)
+{
+	bool flag = false;//no such term by efault
+	trigPowers cur;
+	cur.value = t1.value;
+	cur.sinPower = 0;
+	cur.cosPower = 0;
+
+	if (t1.len != -1)// not C-case
+	{
+		cur.value /= t1.len;
+		for (unsigned int i = 0; i < t1.len; i++)
+			if (t1.ops[i] == 'z'){
+				cur.cosPower++;
+			}
+			else {
+				cur.sinPower++;
+				cur.value *= Cos::getSign(t1.nums[i]);
+			}
+	}
+
+	for (unsigned int i = 0; i < trigEnergy[order].size(); i++)
+	{
+		if (trigEnergy[order][i] == cur)
+		{
+			trigEnergy[order][i].value += cur.value;
+			flag = true;
+			break;
 		}
 	}
 	if (!flag)

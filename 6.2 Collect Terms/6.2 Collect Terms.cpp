@@ -22,6 +22,7 @@ const string config_dir = "config";
 const string inp_res = "input_rot";
 const string out_res = "Results_rot";
 const string out_file_end = "_rot.txt";
+const string add_type = "2sub"; //"antiferro";
 
 
 //Hash functions for unordered maps
@@ -152,7 +153,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	ifstream config(fname.str(), ios::in);
 	int num_points, min_order, max_order;
 	string tmp;
-	int a_amount,mode,analytical_mode;
+	int a_amount,mode,analytical_mode,antiferro_mode;
 	double angle_start, angle_step, angle_finish;
 	getline(config, tmp);
 	config >> num_points;
@@ -168,6 +169,9 @@ int _tmain(int argc, _TCHAR* argv[])
 	getline(config, tmp);
 	getline(config, tmp);
 	config >> analytical_mode;//
+	getline(config, tmp);
+	getline(config, tmp);
+	config >> antiferro_mode;//0-false; 1 - true;
 	getline(config, tmp);
 	getline(config, tmp);
 	config >> angle_start>> angle_step>> angle_finish;
@@ -216,56 +220,92 @@ int _tmain(int argc, _TCHAR* argv[])
 
 		ofstream out, out_energy, out_rot, out_energy_rot_antiferro,out_rot_excitation;
 		ofstream *out_rot_cur;
-
-		
-		
-		fname.str("");
-		fname << out_res << delim << "res_" << points[i] << "_" << max_order << "_" << a_amount << ".txt";
-		out.open(fname.str(), ios::out);
-		out << "{";
-		fname.str("");
-		fname << out_res << delim << "energy_res_" << points[i] << "_" << max_order << "_" << a_amount << ".txt";
-		out_energy.open(fname.str(), ios::out);
-		out_energy << "{";
-
-		//init of rotate energy file
-		fname.str("");
-		fname << out_res << delim << "energy_rot_" << points[i] << "_" << max_order << "_" << a_amount << ".txt";
-		out_rot.open(fname.str(), ios::out);
-		out_rot << "{";
-		//end init
-
-		//init of rotate energy file antiferromagnet case
-		fname.str("");
-		fname << out_res << delim << "energy_rot_antiferro_" << points[i] << "_" << max_order << "_" << a_amount << ".txt";
-		out_energy_rot_antiferro.open(fname.str(), ios::out);
-		out_energy_rot_antiferro.precision(10);
-		out_energy_rot_antiferro << fixed;
-		out_energy_rot_antiferro << "{";
-		//end init
-
-		//init of rotate excitations file
-		fname.str("");
-		fname << out_res << delim << "excitations_rot_" << points[i] << "_" << max_order << "_" << a_amount << ".txt";
-		out_rot_excitation.open(fname.str(), ios::out);
-		out_rot_excitation << "{";
-		//end init
-
 		//init of array for numerical excitations files
 		std::vector<std::ofstream*> out_rot_excitation_numericals;
-		double angle_cur = angle_start;
-		while (angle_cur<angle_finish) {
+		//mode:
+		//0 - energy
+		//1 - energy + rotation
+		//2 - excitations
+		//3 - excitations + rotation
+		//4 - energy antiferro + rotation
+		string tmp_s;
+		switch (mode){
+		
+
+		case 0:
 			fname.str("");
-			fname << out_res << delim << points[i] << delim << "excitations_rot_" << points[i] << "_" << max_order << "_" << a_amount << "_" << angle_cur << ".txt";
-			out_rot_cur = new ofstream();
-			(*out_rot_cur).open(fname.str(), ios::out);
-			(*out_rot_cur) << "{";
-			(*out_rot_cur) << std::fixed;
-			(*out_rot_cur).precision(8);
-			out_rot_excitation_numericals.push_back(out_rot_cur);
-			angle_cur += angle_step;
+			fname << out_res << delim << "energy_res_" << points[i] << "_" << max_order << "_" << a_amount << ".txt";
+			out_energy.open(fname.str(), ios::out);
+			out_energy.precision(10);
+			out_energy << fixed;
+			out_energy << "{";
+			break;
+		case 1:
+			//init of rotate energy file
+			fname.str("");
+			fname << out_res << delim << "energy_rot_" << points[i] << "_" << max_order << "_" << a_amount << ".txt";
+			out_rot.open(fname.str(), ios::out);
+			out_rot.precision(10);
+			out_rot << fixed;
+			out_rot << "{";
+			//end init
+			break;
+
+		case 2:
+			fname.str("");
+			fname << out_res << delim << "res_" << points[i] << "_" << max_order << "_" << a_amount << ".txt";
+			out.open(fname.str(), ios::out);
+			out.precision(10);
+			out << fixed;
+			out << "{";
+			break;
+
+		case 3:
+			if (antiferro_mode == 1)
+				tmp_s = "_"+add_type;
+			else
+				tmp_s = "";
+			if (analytical_mode==1) {
+				//init of rotate excitations file
+				fname.str("");
+				fname << out_res << delim << "excitations_rot_" << points[i] << "_" << max_order << "_" << a_amount << tmp_s<<".txt";
+				out_rot_excitation.open(fname.str(), ios::out);
+				out_rot_excitation.precision(10);
+				out_rot_excitation << fixed;
+				out_rot_excitation << "{";
+				//end init
+			}
+			else {
+				//init of array for numerical excitations files
+				double angle_cur = angle_start;
+				while (angle_cur < angle_finish) {
+					fname.str("");
+					fname << out_res << delim << points[i] << delim << "excitations_rot_" << points[i] << "_" << max_order << "_" << a_amount << "_" << angle_cur << tmp_s << ".txt";
+					out_rot_cur = new ofstream();
+					(*out_rot_cur).open(fname.str(), ios::out);
+					(*out_rot_cur) << "{";
+					(*out_rot_cur) << std::fixed;
+					(*out_rot_cur).precision(8);
+					out_rot_excitation_numericals.push_back(out_rot_cur);
+					angle_cur += angle_step;
+				}
+			}
+			//end init
+			break;
+
+		case 4:
+			//init of rotate energy file antiferromagnet case
+			fname.str("");
+			fname << out_res << delim << "energy_rot_"<<add_type<<"_" << points[i] << "_" << max_order << "_" << a_amount << ".txt";
+			out_energy_rot_antiferro.open(fname.str(), ios::out);
+			out_energy_rot_antiferro.precision(10);
+			out_energy_rot_antiferro << fixed;
+			out_energy_rot_antiferro << "{";
+			//end init
+			break;
+
+		
 		}
-		//end init
 
 		conv1.set(factor, a_amount, m, size);
 		
@@ -324,10 +364,14 @@ int _tmain(int argc, _TCHAR* argv[])
 							break;
 						case 3:
 							if (t1.len > 0)//for rotate excitations
-								rotate_excitation_storage.ConvertToBilinear(t1);
+								if (antiferro_mode==1)
+									//rotate_excitation_storage.ConvertToBilinearAntiFerro(t1);
+									rotate_excitation_storage.ConvertToBilinear2sublattices(t1);
+								else
+									rotate_excitation_storage.ConvertToBilinear(t1);
 							break;
 						case 4:
-								ge.addTermRotationAntiferromagnet(j, t1);
+							ge.addTermRotation2sublattices(j, t1);
 							break;
 						}
 					}
@@ -345,7 +389,6 @@ int _tmain(int argc, _TCHAR* argv[])
 					out_energy << ge.returnE(j);
 					if (j != max_order)
 					{
-						out << ",";
 						out_energy << ",";
 					}
 				}
@@ -361,6 +404,7 @@ int _tmain(int argc, _TCHAR* argv[])
 					conv1.convertToAop();
 					if (!conv1.PrintAllAop(out))
 						out << "0";
+					out << ",";
 				}
 				break;
 			case 3:

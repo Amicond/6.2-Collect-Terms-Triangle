@@ -46,9 +46,15 @@ public:
 
 	void add_operator(AopXZRotate &current, term &t, int num, int operator_type, int new_operator_pos);
 
+	void add_operator_antiferro(AopXZRotate &current, term &t, int num, int operator_type, int new_operator_pos);
+
+	void add_operator_2_sublattices(AopXZRotate &current, term &t, int num, int operator_type, int new_operator_pos);
+
 	void ConvertToBilinear(term t);
 
 	void ConvertToBilinearAntiFerro(term t);
+
+	void ConvertToBilinear2sublattices(term t);
 
 	void print(std::ofstream &F);
 

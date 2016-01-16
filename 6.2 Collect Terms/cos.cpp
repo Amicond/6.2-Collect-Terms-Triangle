@@ -3,10 +3,11 @@
 
 int ** Cos::m = NULL;
 int Cos::size = -1;
+std::vector<std::pair<int, int>> Cos::coords;
 
 void Cos::findCos( int n, int &da, int &db)
 {
-	for (int i = 0; i < size; i++)
+	/*for (int i = 0; i < size; i++)
 		for (int j = 0; j < size; j++)
 		{
 			if (m[i][j] == n)
@@ -15,14 +16,16 @@ void Cos::findCos( int n, int &da, int &db)
 				db = i;
 				break;
 			}
-		}
+		}*/
+	da = coords[n].first;
+	db = coords[n].second;
 	da = da - size / 2;
 	db = -db + size / 2;
 }
 
 void Cos::findArbitraryCos(int n1, int n2, int &da, int &db)
 {
-	for (int i = 0; i < size; i++)
+	/*for (int i = 0; i < size; i++)
 		for (int j = 0; j < size; j++) {
 			if (m[i][j] == n1) {
 				da = j;
@@ -37,7 +40,10 @@ void Cos::findArbitraryCos(int n1, int n2, int &da, int &db)
 				db -= i;
 				break;
 			}
-		}
+		}*/
+	da = coords[n1].first - coords[n2].first;
+	db = coords[n1].second - coords[n2].second;
+	//if (da1 != da || db1 != db) std::cout << "\n" << n1 << " " << n2 << "\n";
 	if (da < 0){
 		da = -da;
 		db = -db;
@@ -47,6 +53,18 @@ void Cos::findArbitraryCos(int n1, int n2, int &da, int &db)
 void Cos::set(int **M, int  Size){
 	Cos::m = M;
 	Cos::size = Size;
+	for (int i = 0; i < Cos::size*Cos::size; i++) {
+		coords.push_back(std::pair<int,int>({ 0, 0 }));
+	}
+	for (int i = 0; i < Cos::size; i++) {
+		for (int j = 0; j < Cos::size; j++) {
+			coords[m[i][j]].first = j;
+			coords[m[i][j]].second = i;
+		}
+	}
+	//for tets
+	Cos::size = Size;
+	//end test
 }
 bool Cos::operator ==(Cos c2)
 {
