@@ -14,6 +14,7 @@ public:
 	static void Cos::findCos( int n, int &da, int &db);
 	static void Cos::findArbitraryCos(int n1, int n2,int &da, int &db);
 	static int getSign(int num);
-	
+	static int getSignPiZero(int num); //different signs on vertical rows
+	static int getSignZeroPi(int num); //different signs on horizontal rows
 };
 #endif //__COS_H__

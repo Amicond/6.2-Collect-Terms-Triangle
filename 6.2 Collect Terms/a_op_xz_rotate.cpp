@@ -65,9 +65,18 @@ bool AopXZRotate::operator<(const AopXZRotate TxzR2)const
 			else return false;
 }
 
+void AopXZRotate::add_trig(int type, int power, bool second ){
+	if (second)
+		trc2.incCoeff(type, power);
+	else
+		trc.incCoeff(type, power);
+
+}
+
 void AopXZRotate::clear()
 {
 	aop_c.clear();
 	trc.clear();
+	trc2.clear();
 	sz_power = 0;
 }

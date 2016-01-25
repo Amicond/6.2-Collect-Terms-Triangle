@@ -3,7 +3,10 @@
 #include "cos.h"
 
 
-
+a_op_couple::a_op_couple()
+{
+	i_power = 0;
+}
 
 bool a_op_couple::operator==(const a_op_couple sec) const
 {
@@ -14,6 +17,8 @@ bool a_op_couple::operator==(const a_op_couple sec) const
 	if (dx != sec.dx)
 		return false;
 	if (dy != sec.dy)
+		return false;
+	if (i_power != sec.i_power)
 		return false;
 	return true;
 }
@@ -56,6 +61,8 @@ void a_op_couple::printAterm(std::ofstream &F, int **m, int size, bool if_print_
 	
 	if (if_print_coeff)
 		F << coeff << "*";
+	if (i_power != 0)
+		F << "Sqrt[-1]^(" << i_power << ")*";
 	if (names[0] != names[1])
 		F << "G";
 	else if (names[0] == 'm')
@@ -87,6 +94,7 @@ void a_op_couple::printAterm(std::ofstream &F, int **m, int size, bool if_print_
 
 void a_op_couple::clear()
 {
-	double coeff = 0;
-	int order = 0;
+	coeff = 0;
+	order = 0;
+	i_power = 0;
 }

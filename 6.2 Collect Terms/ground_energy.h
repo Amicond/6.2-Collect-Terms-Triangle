@@ -13,7 +13,11 @@ class groundEnergy
 		int cosPower;
 		int sinPower;
 		double value;
+		int complex_power;//for complex i, in case of ZY rotation
+
 		bool operator==(const trigPowers& right)const;
+		
+		trigPowers();
 	};
 	std::vector<double> energy;
 	std::vector<trigPowers> trigEnergy[N];
@@ -21,6 +25,7 @@ class groundEnergy
 	bool ifNumerical;
 
 public:
+
 	void set(double factor,bool IfNumerical);
 	
 	void addTerm(unsigned int order, term t1);
@@ -34,7 +39,11 @@ public:
 
 	void addTermRotationAntiferromagnet(int order, term t1);
 
+	void addTermRotationPiZero(int order, term t1);
+
 	void addTermRotation2sublattices(int order, term t1);
+
+	void addTermRotationZY2sublattices(int order, term t1);
 	
 	void printTermRotation(std::ostream& out, int order);
 	

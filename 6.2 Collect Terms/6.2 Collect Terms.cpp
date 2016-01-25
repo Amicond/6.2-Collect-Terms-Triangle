@@ -22,7 +22,7 @@ const string config_dir = "config";
 const string inp_res = "input_rot";
 const string out_res = "Results_rot";
 const string out_file_end = "_rot.txt";
-const string add_type = "2sub"; //"antiferro";
+const string add_type = "pi_zero"; //"antiferro";
 
 
 //Hash functions for unordered maps
@@ -280,7 +280,7 @@ int _tmain(int argc, _TCHAR* argv[])
 				double angle_cur = angle_start;
 				while (angle_cur < angle_finish) {
 					fname.str("");
-					fname << out_res << delim << points[i] << delim << "excitations_rot_" << points[i] << "_" << max_order << "_" << a_amount << "_" << angle_cur << tmp_s << ".txt";
+					fname << out_res << delim << points[i] << delim << "excitations_rot_zy_" << points[i] << "_" << max_order << "_" << a_amount << "_" << angle_cur << tmp_s << ".txt";
 					out_rot_cur = new ofstream();
 					(*out_rot_cur).open(fname.str(), ios::out);
 					(*out_rot_cur) << "{";
@@ -296,7 +296,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		case 4:
 			//init of rotate energy file antiferromagnet case
 			fname.str("");
-			fname << out_res << delim << "energy_rot_"<<add_type<<"_" << points[i] << "_" << max_order << "_" << a_amount << ".txt";
+			fname << out_res << delim << "energy_rot_zy"<<add_type<<"_" << points[i] << "_" << max_order << "_" << a_amount << ".txt";
 			out_energy_rot_antiferro.open(fname.str(), ios::out);
 			out_energy_rot_antiferro.precision(10);
 			out_energy_rot_antiferro << fixed;
@@ -323,7 +323,9 @@ int _tmain(int argc, _TCHAR* argv[])
 			//cout << "\n\n CHANGE MIN OP TO 1!!!!!!!!!!!!!!\n\n";
 			//end Test block
 			rotate_excitation_storage.set(m, size, analytical_mode != 0, angle_start, angle_finish, angle_step);
+			//std::cout << "\nChange K!Change K! \n Change K!Change K!\n";
 			for (int k = min_op_amount; k <= j; k++)
+			//for (int k = 3; k <= 3; k++)
 			{
 				cout << "SubOrder: " << k << "\n";
 				fname.str("");
@@ -366,12 +368,12 @@ int _tmain(int argc, _TCHAR* argv[])
 							if (t1.len > 0)//for rotate excitations
 								if (antiferro_mode==1)
 									//rotate_excitation_storage.ConvertToBilinearAntiFerro(t1);
-									rotate_excitation_storage.ConvertToBilinear2sublattices(t1);
+									rotate_excitation_storage.ConvertToBilinearPiZero(t1);
 								else
 									rotate_excitation_storage.ConvertToBilinear(t1);
 							break;
 						case 4:
-							ge.addTermRotation2sublattices(j, t1);
+							ge.addTermRotationPiZero(j, t1);
 							break;
 						}
 					}
@@ -380,7 +382,7 @@ int _tmain(int argc, _TCHAR* argv[])
 			}
 
 			//defenition is here, because it's impossible to determine iterator in the switch
-			std::vector<std::ofstream*>::iterator it = out_rot_excitation_numericals.begin();
+			std::vector<std::ofstream*>::iterator it;
 			switch (mode){
 
 			case 0:
@@ -411,7 +413,7 @@ int _tmain(int argc, _TCHAR* argv[])
 				switch (analytical_mode){
 				case 0:
 					rotate_excitation_storage.print_numerical(out_rot_excitation_numericals);
-					
+					it = out_rot_excitation_numericals.begin();
 					if (j != max_order){
 						while (it < out_rot_excitation_numericals.end()) {
 							(**it)<<",";

@@ -8,6 +8,10 @@ public:
 	int dx,dy; //shift
 	double coeff;
 	int order;
+	int i_power;
+
+	a_op_couple();
+
 	bool operator==(const a_op_couple sec) const;
 
 	bool operator<(const a_op_couple sec) const;

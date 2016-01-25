@@ -92,3 +92,19 @@ int Cos::getSign(int num)
 	if ((da + db) % 2 == 0) return 1;
 	else return -1;
 }
+
+int Cos::getSignPiZero(int num)
+{
+	int da, db;
+	findCos(num, da, db);
+	if (da % 2 == 0) return 1;
+	else return -1;
+}
+
+int Cos::getSignZeroPi(int num)
+{
+	int da, db;
+	findCos(num, da, db);
+	if (db % 2 == 0) return 1;
+	else return -1;
+}

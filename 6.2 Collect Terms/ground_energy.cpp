@@ -4,10 +4,15 @@
 
 
 
+groundEnergy::trigPowers::trigPowers() {
+	complex_power = 0;
+	sinPower = 0;
+	cosPower = 0;
+}
 
 bool groundEnergy::trigPowers:: operator==(const trigPowers& right)const
 {
-	return (cosPower == right.cosPower) && (sinPower == right.sinPower);
+	return (cosPower == right.cosPower) && (sinPower == right.sinPower)&&(complex_power==right.complex_power);
 }
 
 void groundEnergy::set(double factor, bool IfNumerical)
@@ -111,6 +116,40 @@ void groundEnergy::addTermRotationAntiferromagnet(int order, term t1)
 
 }
 
+void groundEnergy::addTermRotationPiZero(int order, term t1)
+{
+	bool flag = false;//no such term by efault
+	trigPowers cur;
+	cur.value = t1.value;
+	cur.sinPower = 0;
+	cur.cosPower = 0;
+
+	if (t1.len != -1)// not C-case
+	{
+		cur.value /= t1.len;
+		for (unsigned int i = 0; i < t1.len; i++)
+			if (t1.ops[i] == 'z'){
+				cur.cosPower++;
+			}
+			else {
+				cur.sinPower++;
+				cur.value *= Cos::getSignPiZero(t1.nums[i]);
+			}
+	}
+
+	for (unsigned int i = 0; i < trigEnergy[order].size(); i++)
+	{
+		if (trigEnergy[order][i] == cur)
+		{
+			trigEnergy[order][i].value += cur.value;
+			flag = true;
+			break;
+		}
+	}
+	if (!flag)
+		trigEnergy[order].push_back(cur);
+}
+
 void groundEnergy::addTermRotation2sublattices(int order, term t1)
 {
 	bool flag = false;//no such term by efault
@@ -143,6 +182,60 @@ void groundEnergy::addTermRotation2sublattices(int order, term t1)
 	}
 	if (!flag)
 		trigEnergy[order].push_back(cur);
+}
+
+void groundEnergy::addTermRotationZY2sublattices(int order, term t1)
+{
+	bool flag = false;//no such term by efault
+	trigPowers cur;
+	cur.value = t1.value;
+	cur.sinPower = 0;
+	cur.cosPower = 0;
+	cur.complex_power = 0;
+
+	if (t1.len != -1)// not C-case
+	{
+		cur.value /= t1.len;
+		for (unsigned int i = 0; i < t1.len; i++)
+			if (t1.ops[i] == 'z'){
+				cur.cosPower++;
+			}
+			else if (t1.ops[i] == 'p') {
+				cur.sinPower++;
+				cur.value *= Cos::getSign(t1.nums[i]);
+				cur.complex_power++;
+				if (cur.complex_power == 2){
+					cur.value *= -1;
+					cur.complex_power = 0;
+				}
+
+			}
+			else if (t1.ops[i] == 'm') {
+				cur.sinPower++;
+				cur.value *= -Cos::getSign(t1.nums[i]);
+				cur.complex_power++;
+				if (cur.complex_power == 2){
+					cur.value *= -1;
+					cur.complex_power = 0;
+				}
+			}
+			else {
+				std::cout << "WRONG ENERGY";
+			}
+
+	}
+
+	for (unsigned int i = 0; i < trigEnergy[order].size(); i++)
+	{
+		if (trigEnergy[order][i] == cur)
+		{
+			trigEnergy[order][i].value += cur.value;
+			flag = true;
+			break;
+		}
+	}
+	if (!flag)
+		trigEnergy[order].push_back(cur);
 
 }
 
@@ -150,7 +243,8 @@ void groundEnergy::printTermRotation(std::ostream& out, int order)
 {
 	for (unsigned int i = 0; i < trigEnergy[order].size(); i++)
 	{
-
+		if (trigEnergy[order][i].complex_power != 0 && abs(trigEnergy[order][i].value) > 0.00000001)
+			std::cout << "AAAAAAAAAAAAAAAA\n AAAAAAAAAAAAAAAAAAAAAAA\n AAAAAAAAAAAAAAAAAA\n !!!!!!!!!!!!!!!!";
 		out << trigEnergy[order][i].value;
 		switch (trigEnergy[order][i].cosPower){
 			case 0: break;
