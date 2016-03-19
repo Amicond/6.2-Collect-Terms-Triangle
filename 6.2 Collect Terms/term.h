@@ -10,7 +10,8 @@ public:
 	char ops[10];
 	int nums[10];
 	double value;
-
+	size_t hash;
+	bool is_hash_set;
 public:
 	void decompose(std::string s, double val);
 	
@@ -18,5 +19,11 @@ public:
 
 	bool operator==(const term next) const;
 	bool operator<(const term t2)const;
+	
+	void moveToZero();
+	
+	size_t getHash() const;
+	void term::setHash();
+
 };
 #endif //__TERM_H_INCLUDE__

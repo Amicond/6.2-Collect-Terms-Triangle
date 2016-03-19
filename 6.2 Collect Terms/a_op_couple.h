@@ -9,6 +9,8 @@ public:
 	double coeff;
 	int order;
 	int i_power;
+	size_t hash;
+	bool is_hash_set;
 
 	a_op_couple();
 
@@ -18,7 +20,13 @@ public:
 
 	void printAterm(std::ofstream &F, int **m, int size, bool if_print_coeff = true)const;
 
+	void printAtermTransfer(std::ofstream &F, int **m, int size, bool if_print_coeff = true)const;
+
 	void check(); //dx set to be always greater or equal to zero
+
+	void setHash();
+
+	size_t getHash() const;
 
 	void clear();
 

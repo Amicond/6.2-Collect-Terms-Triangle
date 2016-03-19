@@ -3,9 +3,11 @@
 #include "cos.h"
 
 
+
 a_op_couple::a_op_couple()
 {
 	i_power = 0;
+	is_hash_set = false;
 }
 
 bool a_op_couple::operator==(const a_op_couple sec) const
@@ -21,6 +23,27 @@ bool a_op_couple::operator==(const a_op_couple sec) const
 	if (i_power != sec.i_power)
 		return false;
 	return true;
+}
+
+size_t a_op_couple::getHash() const
+{
+	if (!is_hash_set){
+		std::ostringstream out;
+		out << names[0] << " " << names[1] << " ";
+		out << dx << " " << dy << " ";
+		out << i_power;
+		return (std::hash<std::string>()(out.str()));
+	}
+	else
+		return hash;
+}
+
+void a_op_couple::setHash()
+{
+	if (!is_hash_set){
+		is_hash_set = true;
+		hash = getHash();
+	}
 }
 
 void a_op_couple::check()
@@ -90,6 +113,53 @@ void a_op_couple::printAterm(std::ofstream &F, int **m, int size, bool if_print_
 		F << "]";
 	}
 	
+}
+
+void a_op_couple::printAtermTransfer(std::ofstream &F, int **m, int size, bool if_print_coeff) const
+{
+	if (if_print_coeff)
+		F << coeff << "*";
+	// test on complexity for not typical rotations
+	if (i_power != 0)
+		F << "Sqrt[-1]^(" << i_power << ")*";
+
+	// names output (G=(a+_k)(a_k) F=(a_k)(a_-k) Fp=(a+_k)(a+_-k) GG=(a+_(k+k0))(a_k) FF=(a_k)(a_(-k+k0)) FFp=(a+_k)(a+_(-k+k0))
+	//
+	if (names[0] =='p'&& names[1]=='m')
+		F << "G";
+	else if (names[0] == 'm'&&names[1]=='m')
+		F << "F";
+	else if (names[0] == 'p'&&names[1] == 'p')
+		F << "Fp";
+	else if (names[0] == 'P'&&names[1] == 'm')
+		F << "GG";
+	else if (names[0] == 'P'&&names[1] == 'p')
+		F << "FFp";
+	else if (names[0] == 'M'&&names[1] == 'm')
+		F << "FF";
+	else 
+		F << "\n\n Strange ops \n\n";
+
+	//print shift cosine
+	if (dx != 0 || dy != 0)
+	{
+		//if (node[0]!=0)
+		//	F << "\n\n Strange nodes \n\n";
+		F << "*Cos[";
+		switch (dx) {
+			case 0: break;
+			case 1: F << "ka"; break;
+			default: F << "ka*" << dx;
+		}
+		switch (dy) {
+			case 0: break;
+			case -1: F << "-kb"; break;
+			case 1: F << "+kb"; break;
+			default: F << "+kb*" << (dy);
+		}
+		F << "]";
+	}
+
 }
 
 void a_op_couple::clear()

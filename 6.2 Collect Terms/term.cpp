@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "term.h"
+#include "cos.h"
 void term::decompose(std::string s, double val)
 {
 	int temp = s.find_first_not_of("SJpmz");
@@ -58,5 +59,41 @@ bool term::operator<(const term t2)const
 			}
 			return false;
 		}
+	}
+}
+
+size_t term::getHash() const
+{
+	if (!is_hash_set){
+		std::ostringstream out;
+		for (int i = 0; i < len;i++)
+			out << ops[i] << " " ;
+		for (int i = 0; i < len; i++)
+			out << nums[i] << " ";
+		out << len << " " << order << " ";
+		out << type;
+		return (std::hash<std::string>()(out.str()));
+	}
+	else
+		return hash;
+}
+
+void term::setHash()
+{
+	if (!is_hash_set){
+		is_hash_set = true;
+		hash = getHash();
+	}
+}
+
+void term::moveToZero()
+{
+	if (len > 0&&nums[0]!=0)
+	{
+		int da, db;
+		da = Cos::coords[0].first - Cos::coords[nums[0]].first;
+		db = Cos::coords[0].second - Cos::coords[nums[0]].second;
+		for (int i = 0; i < len; i++)
+			Cos::newNodeAfterShift(nums[i], da, db, nums[i]);
 	}
 }

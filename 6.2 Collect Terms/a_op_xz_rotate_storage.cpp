@@ -14,17 +14,16 @@ std::size_t std::hash<AopXZRotate>::operator()(const AopXZRotate& k) const{
 }
 
 std::size_t std::hash<a_op_couple>::operator()(const a_op_couple& k) const {
-	std::ostringstream out;
-	out << k.names[0] << " " << k.names[1] << " ";
-	out << k.dx << " " << k.dy << " ";
-	out << k.i_power;
-	return (std::hash<string>()(out.str()));
+	if (k.is_hash_set)
+		return k.hash;
+	else
+		return k.getHash();
 }
 
 
 int AopXZRotateStorage::arr[4][2] = { { 0, 0 }, { 0, 1 }, { 1, 0 }, { 1, 1 } };
 
-void AopXZRotateStorage::set(int **Matrix, int Matrix_size, bool Mode, double Angle_start, double Angle_finish, double Angle_step, double Angle_start_2, double Angle_finish_2, double Angle_step_2, double Sz)
+void AopXZRotateStorage::set(int **Matrix, int Matrix_size, bool Mode, double Angle_start, double Angle_finish, double Angle_step, double Angle_start_2, double Angle_finish_2, double Angle_step_2, bool SinglePoint, double Sz)
 {
 	matrix = Matrix;
 	matrix_size = Matrix_size;
@@ -40,13 +39,27 @@ void AopXZRotateStorage::set(int **Matrix, int Matrix_size, bool Mode, double An
 		angle_step_2 = Angle_step_2;
 		angle_finish_2 = Angle_finish_2;
 		
-		double angle_cur = angle_start;
+		double angle_cur = angle_start, angle_cur2 = angle_start_2;
 		while (angle_cur <= angle_finish) {
 			storage_numerical.push_back(std::unordered_map<a_op_couple, double>());
 			angle_cur += Angle_step;
 		}
+		std::vector<std::vector<std::unordered_map<a_op_couple, double>>>::iterator it;
+		while (angle_cur2 <= angle_finish_2){
+			storage_numerical_2_angle.push_back(std::vector<std::unordered_map<a_op_couple, double>>());
+			it = --storage_numerical_2_angle.end();
+			angle_cur = angle_start;
+			while (angle_cur <= angle_finish) {
+				it->push_back(std::unordered_map<a_op_couple, double>());
+				angle_cur += Angle_step;
+			}
+			angle_cur2 += Angle_step_2;
+		}
+		
 	}
 	sz = Sz;
+
+	single_point = SinglePoint;
 }
 
 void AopXZRotateStorage::clearTerms()
@@ -56,6 +69,8 @@ void AopXZRotateStorage::clearTerms()
 		storage_numerical[i].clear();
 	}
 	storage_numerical.clear();
+	storage_numerical_2_angle.clear();
+	storage_numerical_single_term.clear();
 }
 
 std::vector<std::pair<int, int>> AopXZRotateStorage::generate_pairs(int n) {
@@ -122,8 +137,31 @@ void AopXZRotateStorage::add_numerical_2_angles(AopXZRotate &current) {
 			it_vec_in++;//go to next point's storage
 			angle_cur += angle_step;
 		}
+		angle_cur_2 += angle_step_2;
 		it_vec_out++;
 	}
+}
+
+void AopXZRotateStorage::add_numerical_single_term(AopXZRotate &current){//single term for double angles 
+	
+	std::unordered_map<a_op_couple, double>::iterator it_map;
+	double coeff_correction;
+	
+	//convert beta-trigonometry to 
+	coeff_correction = current.trc.return_coeff(angle_start);
+	coeff_correction *= current.trc2.return_coeff(angle_start_2);
+	//convert sz to numeric
+	for (unsigned int i = 0; i < current.sz_power; i++)
+		coeff_correction *= sz;
+	//look for the same term
+	it_map = storage_numerical_single_term.find(current.aop_c);
+	if (it_map != storage_numerical_single_term.end()){
+		it_map->second += coeff_correction*current.aop_c.coeff;
+	}
+	else {
+		storage_numerical_single_term.insert({ current.aop_c, coeff_correction*current.aop_c.coeff });
+	}
+			
 }
 
 void AopXZRotateStorage::add_operator(AopXZRotate &current, term &t, int num, int operator_type, int new_operator_pos)
@@ -202,9 +240,48 @@ void AopXZRotateStorage::add_operator_pi_zero(AopXZRotate &current, term &t, int
 	}
 }
 
-void AopXZRotateStorage::add_operator_zero_pi_2_angles(AopXZRotate &current, term &t, int num, int operator_type, int new_operator_pos)
+void AopXZRotateStorage::add_operator_zero_pi_2_angles(AopXZRotate &current, const term &t, int num, int operator_type, int new_operator_pos)
 {
 	bool second_type = Cos::getSignZeroPi(t.nums[num]) == -1;
+	if (operator_type == 0){ //select Sp'-term for  a-operator
+		current.aop_c.names[new_operator_pos] = 'p';
+		switch (t.ops[num])	{
+		case 'z':
+			current.aop_c.coeff *= -1;	   //-Sin[beta]/2=-1*Cos[beta/2]*Sin[beta/2]
+			current.add_trig(2, 1, second_type); //Cos[beta/2]
+			current.add_trig(3, 1, second_type); //Sin[beta/2]
+			break;
+		case 'p':
+			current.add_trig(2, 2, second_type); //Cos^2[beta/2]
+			break;
+		case 'm':
+			current.aop_c.coeff *= -1;
+			current.add_trig(3, 2, second_type); //Sin^2[beta/2]
+			break;
+		}
+	}
+	else{ //select Sm'-term for a-operator
+		current.aop_c.names[new_operator_pos] = 'm';
+		switch (t.ops[num])	{
+		case 'z':
+			current.aop_c.coeff *= -1;    //-Sin[beta]/2=-1*Cos[beta/2]*Sin[beta/2]
+			current.add_trig(2, 1, second_type); //Cos[beta/2]
+			current.add_trig(3, 1, second_type); //Sin[beta/2]
+			break;
+		case 'p':
+			current.aop_c.coeff *= -1;
+			current.add_trig(3, 2, second_type);//Sin^2[beta/2]
+			break;
+		case 'm':
+			current.add_trig(2, 2, second_type);//Cos^2[beta/2]
+			break;
+		}
+	}
+}
+
+void AopXZRotateStorage::add_operator_pi_zero_2_angles(AopXZRotate &current, const term &t, int num, int operator_type, int new_operator_pos)
+{
+	bool second_type = Cos::getSignPiZero(t.nums[num]) == -1;
 	if (operator_type == 0){ //select Sp'-term for  a-operator
 		current.aop_c.names[new_operator_pos] = 'p';
 		switch (t.ops[num])	{
@@ -592,7 +669,7 @@ void AopXZRotateStorage::ConvertToBilinearPiZero(term t) {
 	}
 }
 
-void AopXZRotateStorage::ConvertToBilinearZeroPi2Angles(term t) {
+void AopXZRotateStorage::ConvertToBilinearZeroPi2Angles(const term &t) {
 	if (t.len == -1) return; //no action in C-case
 	
 
@@ -617,7 +694,7 @@ void AopXZRotateStorage::ConvertToBilinearZeroPi2Angles(term t) {
 		if (t.ops[i] != 'z')
 		{
 			//inc amount of Sin[beta]=2*Sin[beta/2]*Cos[beta/2] (p/m case)
-			current.add_trig(2, 1,second_type);
+			current.add_trig(2, 1, second_type);
 			current.add_trig(3, 1, second_type);
 			current.aop_c.coeff *= 2;
 		}
@@ -626,13 +703,18 @@ void AopXZRotateStorage::ConvertToBilinearZeroPi2Angles(term t) {
 		}
 	}
 
+	current.aop_c.setHash();
+
 	if (analytical_mode == true) {
 		std::unordered_map<AopXZRotate, double>::iterator it = storage.find(current);
 		if (it != storage.end()) it->second += current.aop_c.coeff; //add value to existed element
 		else storage.insert({ current, current.aop_c.coeff }); //add new element;
 	}
 	else {
-		add_numerical(current);
+		if (!single_point)
+			add_numerical_2_angles(current);
+		else
+			add_numerical_single_term(current);
 	}
 
 
@@ -689,13 +771,137 @@ void AopXZRotateStorage::ConvertToBilinearZeroPi2Angles(term t) {
 			current.sz_power = t.len - 2;
 
 			current.aop_c.check();
+			current.aop_c.setHash();
+
 			if (analytical_mode == true){
 				std::unordered_map<AopXZRotate, double>::iterator it = storage.find(current);
 				if (it != storage.end()) it->second += current.aop_c.coeff; //add value to existed element
 				else storage.insert({ current, current.aop_c.coeff }); //add new element;
 			}
 			else{
-				add_numerical(current);
+				if (!single_point)
+					add_numerical_2_angles(current);
+				else
+					add_numerical_single_term(current);
+			}
+		}
+	}
+}
+
+void AopXZRotateStorage::ConvertToBilinearPiZero2Angles(const term &t) {
+	if (t.len == -1) return; //no action in C-case
+
+
+	AopXZRotate current;
+	//select only z-terms
+	current.aop_c.names[0] = 'p';
+	current.aop_c.names[1] = 'm';
+	current.aop_c.dx = 0;
+	current.aop_c.dy = 0;
+	current.aop_c.coeff = t.value;
+	current.sz_power = t.len - 1; //amount of sz multipliers equal length-1
+
+	//for correct sign applies multiplier "-2*sz". It's equal to sign of (a+)(a) in case 
+	// sz=+-1/2;
+	current.sz_power++;
+	current.aop_c.coeff *= -2;
+	//end sign 
+
+	bool second_type;
+	for (unsigned int i = 0; i < t.len; i++) {
+		second_type = Cos::getSignZeroPi(t.nums[i]) == -1;
+		if (t.ops[i] != 'z')
+		{
+			//inc amount of Sin[beta]=2*Sin[beta/2]*Cos[beta/2] (p/m case)
+			current.add_trig(2, 1, second_type);
+			current.add_trig(3, 1, second_type);
+			current.aop_c.coeff *= 2;
+		}
+		else{
+			current.add_trig(0, 1, second_type);//inc amount of Cos[beta] (z case)
+		}
+	}
+
+	current.aop_c.setHash();
+
+	if (analytical_mode == true) {
+		std::unordered_map<AopXZRotate, double>::iterator it = storage.find(current);
+		if (it != storage.end()) it->second += current.aop_c.coeff; //add value to existed element
+		else storage.insert({ current, current.aop_c.coeff }); //add new element;
+	}
+	else {
+		if (!single_point)
+			add_numerical_2_angles(current);
+		else
+			add_numerical_single_term(current);
+	}
+
+
+	//check if enough operators for pm case
+	if (t.len < 2) return; //exit in case when not enough
+
+	//select all combination of 2 operators as pm
+	std::vector<std::pair<int, int>> pairs = generate_pairs(t.len);
+	for (auto elem : pairs) {
+		//Sz=Cos[beta]*Sz'+(-0.5)*Sin[beta]*Sp'+(-0.5)*Sin[beta]*Sm'
+		//Sp=Sin[beta]*Sz'+Cos^2[beta/2]*Sp'+(-1)*Sin^2[beta/2]*Sm'
+		//Sm=Sin[beta]*Sz'-Sin^2[beta/2]*Sp'+Cos^2[beta/2]*Sm'
+
+		//check all possible combinations 
+		for (unsigned int i = 0; i < 4; i++) { //try all combinations 4: pp,pm,mp,mm
+			current.clear();
+			current.aop_c.coeff = t.value;
+
+			//add shift between 2 nodes for K-type Cosine
+			//output alwayas has positive dx
+			Cos::findArbitraryCos(t.nums[elem.first], t.nums[elem.second], current.aop_c.dx, current.aop_c.dy);
+
+			//first operator
+			add_operator_zero_pi_2_angles(current, t, elem.first, arr[i][0], 0);
+
+			//second operator
+			add_operator_zero_pi_2_angles(current, t, elem.second, arr[i][1], 1);
+
+			//add trig factors from "z-replaced" terms
+			int skip = elem.first; //first element that not replaced to "z"
+			for (unsigned int i = 0; i < t.len; i++) {
+				if (i != skip) {
+					switch (t.ops[i]) {
+					case 'z':
+						current.add_trig(0, 1, second_type);
+						break;
+					case 'p':
+						current.aop_c.coeff *= 2;		//Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
+						current.add_trig(2, 1, second_type); //Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
+						current.add_trig(3, 1, second_type); //Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
+						break;
+					case 'm':
+						current.aop_c.coeff *= 2;		//Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
+						current.add_trig(2, 1, second_type); //Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
+						current.add_trig(3, 1, second_type); //Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
+						break;
+					}
+				}
+				else
+					skip = elem.second; //when find and skip first element, we change skip-variable to the number of second one
+			}
+
+			current.aop_c.coeff /= t.len; //according to duplication of translationally invariant routes
+			current.sz_power = t.len - 2;
+
+			current.aop_c.check();
+			current.aop_c.setHash();
+
+			if (analytical_mode == true){
+				std::unordered_map<AopXZRotate, double>::iterator it = storage.find(current);
+				if (it != storage.end()) it->second += current.aop_c.coeff; //add value to existed element
+				else storage.insert({ current, current.aop_c.coeff }); //add new element;
+			}
+			else{
+				if (!single_point)
+					add_numerical_2_angles(current);
+				else
+					add_numerical_single_term(current);
 			}
 		}
 	}
@@ -1160,4 +1366,15 @@ void AopXZRotateStorage::print_numerical_2_angles(std::vector<std::vector<std::o
 		it_vec_out++;
 		it_ofstr_out++;
 	}
+}
+
+void AopXZRotateStorage::print_numerical_single_term(std::ofstream &Fs) {
+	
+	for (auto &elem : storage_numerical_single_term){
+		if (abs(elem.second) > 0.000000001){
+			Fs << "+" << elem.second << "*";
+			elem.first.printAterm(Fs, matrix, matrix_size, false);
+		}
+	}
+			
 }

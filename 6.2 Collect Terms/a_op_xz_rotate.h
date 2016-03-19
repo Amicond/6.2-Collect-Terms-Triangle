@@ -20,6 +20,11 @@ public:
 	bool operator<(const AopXZRotate TxzR2)const;
 
 	void add_trig(int type, int power, bool second = false);
+
+
+	/*void setHash();
+
+	size_t getHash() const;*/
 	
 	void clear();
 };

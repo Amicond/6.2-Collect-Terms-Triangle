@@ -68,14 +68,9 @@ void Cos::set(int **M, int  Size){
 }
 bool Cos::operator ==(Cos c2)
 {
-	int s1, s2;
-	s1 = ka.size();
-	s2 = c2.ka.size();
-	if (s1 != s2)
+	if (ka.size() != c2.ka.size())
 		return false;
-	s1 = kb.size();
-	s2 = c2.kb.size();
-	if (s1 != s2)
+	if (kb.size() != c2.kb.size())
 		return false;
 	for (unsigned int i = 0; i < ka.size(); i++)
 	{
@@ -108,3 +103,33 @@ int Cos::getSignZeroPi(int num)
 	if (db % 2 == 0) return 1;
 	else return -1;
 }
+
+void Cos::printArbitraryCos(std::ofstream &F,int n1,int n2)
+{
+	int dx, dy;
+	findArbitraryCos(n1, n2, dx, dy);
+	if (dx != 0 || dy != 0)
+	{
+		//if (node[0]!=0)
+		//	F << "\n\n Strange nodes \n\n";
+		F << "Cos[";
+		switch (dx){
+		case 0: break;
+		case 1: F << "ka"; break;
+		default: F << "ka*" << dx;
+		}
+		switch (dy){
+		case 0: break;
+		case -1: F << "-kb"; break;
+		case 1: F << "+kb"; break;
+		default: F << "+kb*" << (dy);
+		}
+		F << "]";
+	}
+}
+
+void Cos::newNodeAfterShift(int inp, int da, int db, int &out)
+{
+	out = m[coords[inp].second + db][coords[inp].first + da];
+}
+

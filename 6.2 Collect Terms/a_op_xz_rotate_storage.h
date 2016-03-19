@@ -26,6 +26,7 @@ class AopXZRotateStorage{
 public:
 	//members
 	std::unordered_map<AopXZRotate, double> storage; //for terms with trigonometry coeffs
+	std::unordered_map<a_op_couple, double> storage_numerical_single_term;//for single term with double angles
 	std::vector<std::unordered_map<a_op_couple, double>> storage_numerical;//for terms with numeric values only
 	std::vector<std::vector<std::unordered_map<a_op_couple, double>>> storage_numerical_2_angle;//for terms with numeric values only
 	int **matrix; //matrix vith node numbers
@@ -36,10 +37,12 @@ public:
 	double angle_step, angle_step_2;
 	double sz;
 	static int arr[4][2];
+
+	bool single_point; //special case for claculation of only 1 point in numerical excitations
 	//methods
 	//void set(int **Matrix, int Matrix_size, bool Mode, double Angle_start, double Angle_finish, double Angle_step, double Sz = -0.5);
 
-	void set(int **Matrix, int Matrix_size, bool Mode, double Angle_start, double Angle_finish, double Angle_step, double Angle_start_2=0, double Angle_finish_2=-1, double Angle_step_2=1, double Sz = -0.5);
+	void set(int **Matrix, int Matrix_size, bool Mode, double Angle_start, double Angle_finish, double Angle_step, double Angle_start_2 = 0, double Angle_finish_2 = -1, double Angle_step_2 = 1, bool SinglePoint = false, double Sz = -0.5);
 
 	void clearTerms();
 
@@ -49,11 +52,15 @@ public:
 
 	void add_numerical_2_angles(AopXZRotate &current);
 
+	void add_numerical_single_term(AopXZRotate &current);//single term for double angles
+
 	void add_operator(AopXZRotate &current, term &t, int num, int operator_type, int new_operator_pos);
 
 	void add_operator_pi_zero(AopXZRotate &current, term &t, int num, int operator_type, int new_operator_pos);
 
-	void add_operator_zero_pi_2_angles(AopXZRotate &current, term &t, int num, int operator_type, int new_operator_pos);
+	void add_operator_zero_pi_2_angles(AopXZRotate &current, const term &t, int num, int operator_type, int new_operator_pos);
+
+	void add_operator_pi_zero_2_angles(AopXZRotate &current, const term &t, int num, int operator_type, int new_operator_pos);
 
 	void add_operator_antiferro(AopXZRotate &current, term &t, int num, int operator_type, int new_operator_pos);
 
@@ -65,7 +72,9 @@ public:
 
 	void ConvertToBilinearPiZero(term t);
 
-	void ConvertToBilinearZeroPi2Angles(term t);
+	void ConvertToBilinearZeroPi2Angles(const term &t);
+
+	void ConvertToBilinearPiZero2Angles(const term &t);
 
 	void ConvertToBilinearAntiFerro(term t);
 
@@ -78,6 +87,8 @@ public:
 	void print_numerical(std::vector<std::ofstream*> &Fs);
 
 	void print_numerical_2_angles(std::vector<std::vector<std::ofstream*>> &Fs);
+
+	void print_numerical_single_term(std::ofstream &Fs);
 };
 
 #endif //__A_OP_XZ_ROTATE_STORAGE__
