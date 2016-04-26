@@ -38,8 +38,10 @@ size_t a_op_couple::getHash() const
 		return hash;
 }
 
-void a_op_couple::setHash()
+void a_op_couple::setHash(bool force)
 {
+	if (force)
+		is_hash_set = false;
 	if (!is_hash_set){
 		is_hash_set = true;
 		hash = getHash();
@@ -57,11 +59,11 @@ void a_op_couple::check()
 	{
 		dy = -dy;
 	}
-	if (names[0] != names[1] && names[0] == 'm') // G-function case for excitations
-	{
-		names[0] = 'p';
-		names[1] = 'm';
-	}
+	//if (names[0] != names[1] && names[0] == 'm') // G-function case for excitations
+	//{
+	//	names[0] = 'p';
+	//	names[1] = 'm';
+	//}
 }
 
 bool a_op_couple::operator<(const a_op_couple sec) const
@@ -113,6 +115,67 @@ void a_op_couple::printAterm(std::ofstream &F, int **m, int size, bool if_print_
 		F << "]";
 	}
 	
+}
+
+void a_op_couple::printDoubleAterm(std::ofstream &F, int **m, int size, bool if_print_coeff)const
+{
+	//
+	//a+_a=G1
+	//a+a+=Fp1
+	//aa=F1
+	//b+b=G2
+	//b+b+=Fp2
+	//bb=F2
+	//a+b=G3
+	//b+a=G4
+	//ab=F3
+	//a+b+=Fp3
+	if (if_print_coeff)
+		F << coeff << "*";
+	if (i_power != 0)
+		F << "Sqrt[-1]^(" << i_power << ")*";
+	
+	if ((names[0]=='p'&& names[1]=='m')|| (names[0] == 'm'&& names[1] == 'p'))
+		F << "G1";
+	else if (names[0] == 'm'&&names[1]=='m')
+		F << "F1";
+	else if (names[0] == 'p'&&names[1] == 'p')
+		F << "Fp1";
+	else if ((names[0] == 'P'&& names[1] == 'M') || (names[0] == 'M'&& names[1] == 'P'))
+		F << "G2";
+	else if (names[0] == 'P'&&names[1] == 'P')
+		F << "Fp2";
+	else if (names[0] == 'M'&&names[1] == 'M')
+		F << "F2";
+	else if ((names[0] == 'p'&&names[1] == 'M')|| (names[0] == 'M'&&names[1] == 'p'))
+		F << "G3";
+	else if ((names[0] == 'P'&&names[1] == 'm') || (names[0] == 'm'&&names[1] == 'P'))
+		F << "G4";
+	else if ((names[0] == 'p'&&names[1] == 'P') || (names[0] == 'P'&&names[1] == 'p'))
+		F << "Fp3";
+	else if ((names[0] == 'm'&&names[1] == 'M') || (names[0] == 'M'&&names[1] == 'm'))
+		F << "F3";
+	else
+		F << "\n\n Strange ops \n\n";
+	if (dx != 0 || dy != 0)
+	{
+		//if (node[0]!=0)
+		//	F << "\n\n Strange nodes \n\n";
+		F << "*Cos[";
+		switch (dx) {
+		case 0: break;
+		case 1: F << "ka"; break;
+		default: F << "ka*" << dx;
+		}
+		switch (dy) {
+		case 0: break;
+		case -1: F << "-kb"; break;
+		case 1: F << "+kb"; break;
+		default: F << "+kb*" << (dy);
+		}
+		F << "]";
+	}
+
 }
 
 void a_op_couple::printAtermTransfer(std::ofstream &F, int **m, int size, bool if_print_coeff) const

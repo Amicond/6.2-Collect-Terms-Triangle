@@ -1,7 +1,7 @@
 Num of points
 1
 Start order | Finish Order 
-1 7
+2 2
 A operators amount
 2
 Mode(0-energy ferro; 1-energy ferro+rotation ; 2- ; 3- for Rotational excitations special case; 4- energy rotation special case; )
@@ -11,6 +11,6 @@ For Rotational excitations: Analytical-1, numerical-0
 For Rotational excitations: 0 ferro, 1-special
 1
 Angle-Start Angle-Step Angle-Finish (If numerical mode for rotational excitations)
-0.3 0.3 -2.7
+0.2 0.3 -2.7
 Angle-Start2 Angle-Step2 Angle-Finish2 (If numerical mode for rotational excitations)
-4.4 0.3 -2.7
+4.1 0.3 -2.7

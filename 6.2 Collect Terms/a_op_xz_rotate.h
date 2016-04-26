@@ -14,6 +14,10 @@ public:
 	int sz_power; //power of sz-factor (sz is equal to 1/2 or -1/2)
 //Methods
 	//void add_analytic_operator(term &t, int type, int n);//type: 0 - S_plus, 1 - S_minus
+	AopXZRotate()
+	{
+
+	}
 
 	bool operator==(const AopXZRotate TxzR2)const;
 	
