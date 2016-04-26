@@ -446,7 +446,7 @@ int main(int argc, char * argv[])
 	fname.str("");
 	fname << config_dir << delim << "points.txt";
 	ifstream fpoints(fname.str(), ios::in);
-	string s, tmp_s;
+	string s,  tmp_s;
 
 	for (int i = 0; i < num_points; i++)
 	{
