@@ -16,7 +16,7 @@
 //			trc.incCoeff(3, 1);//Sin[beta]=2*Cos[beta/2]*Sin[beta/2]
 //			break;
 //		case 'p':
-//			//current.aop.coeff *= 1;
+//			//current.aop.coeff *= 1; 
 //			trc.incCoeff(2, 2);//Cos^2[beta/2]
 //			break;
 //		case 'm':

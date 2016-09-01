@@ -14,7 +14,7 @@ bool a_op_couple::operator==(const a_op_couple sec) const
 {
 	if (names[0] != sec.names[0])
 		return false;
-	if (names[1] != sec.names[1])
+	if (names[1] != sec.names[1]) 
 		return false;
 	if (dx != sec.dx)
 		return false;

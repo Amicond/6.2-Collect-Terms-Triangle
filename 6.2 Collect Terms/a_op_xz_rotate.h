@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "stdafx.h" 
 #ifndef __AOP_XZ_ROTATE_H__
 #define  __AOP_XZ_ROTATE_H__
 #include "term.h"

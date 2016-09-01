@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "stdafx.h" 
 #ifndef __A_OP_H_INCLUDED__  
 #define __A_OP_H_INCLUDED__
 class a_op

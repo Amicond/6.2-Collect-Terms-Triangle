@@ -22,7 +22,7 @@ void term_storage::add_term(const term &t1)
 	std::unordered_map<term, double>::iterator it;
 	std::vector<std::pair<int, int>> pairs = generate_pairs(t1.len);
 	for (int i = 0; i < t1.len; i++)
-		if (t1.ops[i] != 'z')
+		if (t1.ops[i] != 'z') 
 			return;
 	for (auto &elem : pairs)
 	{

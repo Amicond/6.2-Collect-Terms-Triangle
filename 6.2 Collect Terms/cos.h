@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #ifndef __COS_H__
 #define __COS_H__
-class Cos
+class Cos 
 {
 public:
 	static int **m; //matrix with node-numbers

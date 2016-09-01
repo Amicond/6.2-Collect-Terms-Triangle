@@ -1,5 +1,5 @@
 #include "stdafx.h"
-#ifndef __CONVERTER_H__
+#ifndef __CONVERTER_H__ 
 #define __CONVERTER_H__
 #include "correction.h"
 #include "a_op.h"
