@@ -12,7 +12,7 @@ public:
 	double value;
 	size_t hash;
 	bool is_hash_set;
-public:
+public: 
 	void decompose(std::string s, double val);
 	
 	void setOrder(int Ord);

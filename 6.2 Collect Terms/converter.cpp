@@ -24,7 +24,7 @@ void converter::set(double F, int A_amount, int **M, int Matrix_size)
 
 void converter::decomposeTerm(term in)
 {
-	if (a_amount == 1)
+	if (a_amount == 1) 
 		decomposeTerm1(in);
 	if (a_amount == 2)
 	{

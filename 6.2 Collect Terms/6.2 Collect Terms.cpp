@@ -153,17 +153,19 @@ public:
 	int** m;
 	int size;
 
+	int angles_precision;
 	double angle_start, angle_step, angle_finish;
 	double angle_start2, angle_step2, angle_finish2;
 	double factor;
 
 
-	eval_results(vector<string> &Points, int** M,int Size)
+	eval_results(vector<string> &Points, int** M,int Size,int Precision)
 	{
 		points = &Points;
 		max_order = 1;
 		m = M;
 		size = Size;
+		angles_precision = Precision;
 	}
 
 	
@@ -253,7 +255,10 @@ public:
 		fname.str("");
 		fname.precision(2);
 		fname << fixed;
-		fname << out_res << delim << (*points)[i] << delim << "excitations_rot_" << (*points)[i] << "_" << max_order << "_" << angle_start2 << "_" << angle_start << tmp_s << "_single.txt";
+		fname << out_res << delim << (*points)[i] << delim << "excitations_rot_" << (*points)[i] << "_" << max_order << "_";
+		fname.precision(angles_precision);
+		fname << angle_start2 << "_" << angle_start;
+		fname << tmp_s << "_single.txt";
 		out_rot_excitation_numericals_single.open(fname.str(), ios::out);
 		out_rot_excitation_numericals_single.precision(10);
 		out_rot_excitation_numericals_single << fixed;
@@ -293,15 +298,14 @@ public:
 
 						t1.decompose(tmp_s, temp_val);
 						
-							if (t1.len > 0)//for rotate excitations
-								if (antiferro_mode == 1)
-								{
-									rotate_excitation_storage.ConvertTo2TypesNumerical(t1, 0);
-									rotate_excitation_storage.ConvertTo2TypesNumerical(t1, 1);
-								}
-								else
-									rotate_excitation_storage.ConvertToBilinear(t1);
-							break;
+						if (t1.len > 0)//for rotate excitations
+							if (antiferro_mode == 1)
+							{
+								rotate_excitation_storage.ConvertTo2TypesNumerical(t1, 0);
+								rotate_excitation_storage.ConvertTo2TypesNumerical(t1, 1);
+							}
+							else
+								rotate_excitation_storage.ConvertToBilinear(t1);
 					}
 				}
 				cur.close();
@@ -336,6 +340,67 @@ public:
 		for (int j = min_order; j <= max_order; j++)
 		{
 			ge.clearTerms();
+			cout << "Order " << j << endl;
+			for (int k = min_op_amount; k <= j; k++)
+			{
+				cout << "SubOrder: " << k << "\n";
+				fname.str("");
+				fname << "d:\\Andrew\\Practice\\!!!_Last Set\\6.2 Collect Terms\\6.2 Collect Terms" << delim << inp_res << delim << (*points)[i] << "\\" << j << "_results_" << (*points)[i] << "_" << k << out_file_end;
+				ifstream cur(fname.str(), ios::in);
+
+				t1.setOrder(j);
+				int str_amount = 0;
+				while (!cur.eof())
+				{
+					str_amount++;
+					if (str_amount % 200000 == 0)
+						cout << "Or:" << j << " Sub:" << k << "\n";
+					if (str_amount % 5000 == 0)
+						cout << str_amount << " ";
+					getline(cur, s);
+					if (s.length() > 0)
+					{
+						istringstream iss;
+						iss.str(s);
+						iss >> tmp_s >> temp_val;
+
+						t1.decompose(tmp_s, temp_val);
+
+						ge.addTermRotationZeroPi2Angles(j, t1);
+					}
+				}
+				cur.close();
+			}
+			ge.printTermRotation(out_energy_rot_antiferro, j, true);
+			if (j != max_order)
+				out_energy_rot_antiferro << ",";
+
+		}
+		out_energy_rot_antiferro << "}";
+		out_energy_rot_antiferro.close();
+	}
+
+	void eval_energy_rotate_3types()
+	{
+		groundEnergy ge;
+		term t1;
+		string s, tmp_s;
+		double temp_val;
+
+		ge.set(-0.5, true);
+
+		std::ofstream out_energy_rot_antiferro;
+		fname.str("");
+		fname << out_res << delim << "energy_rot_" << add_type << "_" << max_order << ".txt";
+		out_energy_rot_antiferro.open(fname.str(), ios::out);
+		out_energy_rot_antiferro.precision(10);
+		out_energy_rot_antiferro << fixed;
+		out_energy_rot_antiferro << "{";
+
+		for (int j = min_order; j <= max_order; j++)
+		{
+			ge.clearTerms();
+			cout << "Order " << j << endl;
 			for (int k = min_op_amount; k <= j; k++)
 			{
 				cout << "SubOrder: " << k << "\n";
@@ -376,13 +441,10 @@ public:
 	}
 
 
-
-
 };
 
 int main(int argc, char * argv[])
 {
-	cout << min_op_amount << "\n";
 	vector<string> points;
 	std::ostringstream fname;
 	fname << config_dir << delim << "config.txt";
@@ -390,6 +452,7 @@ int main(int argc, char * argv[])
 	int num_points, min_order, max_order;
 	string tmp;
 	int a_amount,mode,analytical_mode,antiferro_mode;
+	int angles_precision;
 	double angle_start, angle_step, angle_finish;
 	double angle_start2, angle_step2, angle_finish2;
 
@@ -412,27 +475,31 @@ int main(int argc, char * argv[])
 	config >> antiferro_mode;//0-false; 1 - true;
 
 	//if there are no command line arguments read angles from file
-	if (argc < 2)
+	if (argc < 3)
 	{
+		angles_precision = 2;
 		getline(config, tmp);
 		getline(config, tmp);
 		config >> angle_start >> angle_step >> angle_finish;
 		getline(config, tmp);
 		getline(config, tmp);
 		config >> angle_start2 >> angle_step2 >> angle_finish2;
+
 	}
 	else
 	{
-		cout << argv[1] << " " << argv[2]<<endl;
-		angle_start = atof(argv[1]);
-		angle_start2 = atof(argv[2]);
+		//cout <<"Prec test="<<argv[2] << " " << argv[3]<<endl;
+		angles_precision= atof(argv[1]);
+		angle_start = atof(argv[2]);
+		angle_start2 = atof(argv[3]);
+		//cout << "Prec test=" << angle_start << " " << angle_start2 << endl;
 		angle_step = 100;
 		angle_step2 = 100;
 		angle_finish = angle_start - 1;
 		angle_finish2 = angle_start2 - 1;
 	}
 	config.close();
-
+	cout << angle_start << " " << angle_start2 << endl;
 	///init matrix
 	int size = max(1 + ((max_order) / 2) * 2, 1 + (max_order - 2) * 2);
 	int** m;
@@ -455,7 +522,9 @@ int main(int argc, char * argv[])
 	}
 	fpoints.close();
 
-	eval_results my_res(points,m,size);
+	eval_results my_res(points,m,size, angles_precision);
+	my_res.min_order = min_order;
+	my_res.max_order = max_order;
 	my_res.angle_start = angle_start;
 	my_res.angle_start2 = angle_start2;
 	my_res.angle_finish = angle_finish;
@@ -469,7 +538,7 @@ int main(int argc, char * argv[])
 		double factor;
 		///test
 		double factor_edge = 0.56;
-		cout << "TEST FACTOR-EDGE";
+		cout << "TEST FACTOR-EDGE\n";
 		//end test
 		if (stof(points[i]) - factor_edge > 0) ///
 			factor = 0.5;

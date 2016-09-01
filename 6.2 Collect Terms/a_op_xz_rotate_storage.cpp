@@ -104,6 +104,7 @@ void AopXZRotateStorage::clearTerms()
 	storage_numerical.clear();
 	storage_numerical_2_angle.clear();
 	storage_numerical_single_term.clear();
+	storage_numerical_2_types_term.clear();
 }
 
 std::vector<std::pair<int, int>> AopXZRotateStorage::generate_pairs(int n) {
@@ -420,7 +421,7 @@ void AopXZRotateStorage::add_operator_antiferro(AopXZRotate &current, term &t,in
 void AopXZRotateStorage::add_operator_2_types(a_op_couple &aop_c, term &t, int num, int operator_type, int new_operator_pos, int type)
 {
 	if (operator_type == 0) { //select Sp'-term for  a-operator
-		if (type == 1) aop_c.names[new_operator_pos] = 'p';
+		if (type == 0) aop_c.names[new_operator_pos] = 'p';
 		else aop_c.names[new_operator_pos] = 'P';
 
 		switch (t.ops[num]) {
@@ -436,7 +437,7 @@ void AopXZRotateStorage::add_operator_2_types(a_op_couple &aop_c, term &t, int n
 		}
 	}
 	else { //select Sm'-term for a-operator
-		if (type == 1) aop_c.names[new_operator_pos] = 'm';
+		if (type == 0) aop_c.names[new_operator_pos] = 'm';
 		else aop_c.names[new_operator_pos] = 'M';
 
 		switch (t.ops[num]) {
@@ -1384,7 +1385,7 @@ void AopXZRotateStorage::checkOperatorsOrder(a_op_couple &aop_c)
 		aop_c.names[1]=temp;
 	}
 }
-void AopXZRotateStorage::ConvertTo2TypesNumerical(term t,int shift)
+void AopXZRotateStorage::ConvertTo2TypesNumerical(term &t,int shift)
 {
 	double sz_factor = -0.5;
 	if (t.len == -1) return; //no action in C-case
@@ -1398,7 +1399,7 @@ void AopXZRotateStorage::ConvertTo2TypesNumerical(term t,int shift)
 		aop_c.shift_in_elementary_cell();
 	aop_c.dx = 0;
 	aop_c.dy = 0;
-	aop_c.coeff = t.value;//2 sublattices=>factor  0.5
+	aop_c.coeff = t.value;
 	for (int i = 0; i < t.len - 1; i++)
 		aop_c.coeff *= sz_factor;
 	//aop_c.coeff *= -1; //minus sign in front of a+a terms
@@ -1426,7 +1427,10 @@ void AopXZRotateStorage::ConvertTo2TypesNumerical(term t,int shift)
 	
 	
 	//select all combination of 2 operators as pm
+	
 	std::vector<std::pair<int, int>> pairs = generate_pairs(t.len);
+
+	//end test
 	for (auto elem : pairs) {
 
 		//check all possible combinations 

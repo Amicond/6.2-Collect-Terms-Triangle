@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "stdafx.h" 
 #ifndef __A_OP_COUPLE_H_INCLUDED__  
 #define __A_OP_COUPLE_H_INCLUDED__
 

@@ -20,7 +20,7 @@ void Cos::findCos( int n, int &da, int &db)
 	da = coords[n].first;
 	db = coords[n].second;
 	da = da - size / 2;
-	db = -db + size / 2;
+	db = -db + size / 2; 
 }
 
 void Cos::findArbitraryCos(int n1, int n2, int &da, int &db)

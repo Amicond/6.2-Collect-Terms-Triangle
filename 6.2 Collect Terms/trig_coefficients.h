@@ -12,7 +12,7 @@ class trig_coefficients
 	static const std::string angleName;
 	static const int PowerAmount = 4;
 	std::vector<int> trig_angle_power;
-public:
+public: 
 	trig_coefficients(std::string angleName = "beta"); //set coefficients name
 	
 	bool operator==(const trig_coefficients tc2)const;

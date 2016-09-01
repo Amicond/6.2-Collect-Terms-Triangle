@@ -90,7 +90,7 @@ public:
 	//void ConvertToBilinearZY2sublattices(term t);
 	void checkOperatorsOrder(a_op_couple &aop_c);
 
-	void ConvertTo2TypesNumerical(term t,int shift);
+	void ConvertTo2TypesNumerical(term &t,int shift);
 
 	//New functions with transfer terms
 

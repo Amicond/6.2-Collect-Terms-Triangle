@@ -18,7 +18,7 @@ void correction::add(Cos new_cos)
 	it = std::find(cs.begin(), cs.end(), new_cos);
 	if (it != cs.end())
 	{
-		it->factor += new_cos.factor;
+		it->factor += new_cos.factor; 
 	}
 	else
 		cs.push_back(new_cos);

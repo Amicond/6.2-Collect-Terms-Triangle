@@ -8,7 +8,7 @@ namespace std{
 	template <>
 	struct hash < term >
 	{
-		std::size_t operator()(const term & k) const;
+		std::size_t operator()(const term & k) const; 
 	};
 }
 

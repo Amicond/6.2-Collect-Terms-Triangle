@@ -4,13 +4,16 @@
 #include "term.h"
 
 
-const int N = 10; //max order
+const int N = 8; //max order
 
+
+//class for several types of pseudospins
 class groundEnergy
 {
+	static const int Types = 3;
 	struct trigPowers //for coeeficients in case of rotation
 	{
-		int cosPower;
+		int cosPower[;
 		int sinPower;
 		int cosPower2;
 		int sinPower2;

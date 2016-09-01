@@ -20,7 +20,7 @@ bool trig_coefficients:: operator<(const trig_coefficients tc2)const
 	for (unsigned int i = 0; i < PowerAmount; i++)
 	{
 		if (trig_angle_power[i] < tc2.trig_angle_power[i])
-			return true;
+			return true; 
 		else if (tc2.trig_angle_power[i] < trig_angle_power[i])
 			return false;
 	}

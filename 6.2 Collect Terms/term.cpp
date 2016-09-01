@@ -22,7 +22,7 @@ void term::decompose(std::string s, double val)
 	}
 	value = val;
 
-}
+} 
 void term::setOrder(int Ord)
 {
 	order = Ord;

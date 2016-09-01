@@ -5,7 +5,7 @@
 
 class correction
 {
-public:
+public: 
 	std::vector<char> in;
 	char out[2];
 	std::vector<Cos> cs;

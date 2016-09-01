@@ -14,7 +14,7 @@ bool a_op::operator==(const a_op sec) const
 			return false;
 	}
 	return true;
-}
+} 
 
 bool a_op::operator<(const a_op sec) const
 {
