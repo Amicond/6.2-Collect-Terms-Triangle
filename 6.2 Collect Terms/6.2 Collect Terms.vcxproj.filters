@@ -57,6 +57,9 @@
     <ClInclude Include="term_storage.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="pseudospin_types.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="6.2 Collect Terms.cpp">
@@ -96,6 +99,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="trig_coefficients.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pseudospin_types.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

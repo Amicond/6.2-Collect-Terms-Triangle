@@ -5,33 +5,35 @@
 
 
 groundEnergy::trigPowers::trigPowers() {
-	complex_power = 0;
-	sinPower = 0;
-	cosPower = 0;
-	sinPower2 = 0;
-	cosPower2 = 0;
+	for (int i = 0; i < Types; i++)
+	{
+		sinPower[i] = 0;
+		cosPower[i] = 0;
+	}
 }
 
-void groundEnergy::trigPowers::add_trig(int type, int power, bool second_type)
+void groundEnergy::trigPowers::add_trig(int type, int power, int plaquet_type)
 {
-	if (second_type == true)
+	switch (type)
 	{
-		if (type == 0)
-			cosPower2 += power;
-		else
-			sinPower2 += power;
+		case 0: sinPower[plaquet_type]++; break;
+		case 1: cosPower[plaquet_type]++; break;
+		default: std::cout << "\n\nTRIG POWER ALARM!\n\n"; std::cin >> type;
 	}
-	else
-		if (type == 0)
-			cosPower += power;
-		else
-			sinPower += power;
-
 }
 
 bool groundEnergy::trigPowers:: operator==(const trigPowers& right)const
 {
-	return (cosPower == right.cosPower) && (sinPower == right.sinPower) && (complex_power == right.complex_power) && (cosPower2 == right.cosPower2) && (sinPower2 == right.sinPower2);
+	bool res = true;
+	for (int i = 0; i < Types; i++)
+	{
+		if (sinPower[i] != right.sinPower[i]||cosPower[i]!=right.cosPower[i])
+		{
+			res = false;
+			break;
+		}
+	}
+	return res;
 }
 
 void groundEnergy::set(double factor, bool IfNumerical)
@@ -73,118 +75,119 @@ double groundEnergy::returnE(unsigned int order)
 		return 99999;
 }
 //rotation case
-void groundEnergy::addTermRotation(int order, term t1)
+
+
+//void groundEnergy::addTermRotationZeroPi2Angles(int order, term t1)
+//{
+//	bool flag = false;//no such term by efault
+//	trigPowers cur;
+//	cur.value = t1.value;
+//	bool second_type;
+//	if (t1.len != -1)// not C-case
+//	{
+//		cur.value /= t1.len;
+//		for (unsigned int i = 0; i < t1.len; i++){
+//			second_type = Cos::getSignZeroPi(t1.nums[i]) == -1;
+//			if (t1.ops[i] == 'z')
+//				cur.add_trig(0, 1, second_type);
+//			else 
+//				cur.add_trig(1, 1, second_type);
+//		}
+//	}
+//
+//	for (unsigned int i = 0; i < trigEnergy[order].size(); i++)
+//	{
+//		if (trigEnergy[order][i] == cur)
+//		{
+//			trigEnergy[order][i].value += cur.value;
+//			flag = true;
+//			break;
+//		}
+//	}
+//	if (!flag)
+//		trigEnergy[order].push_back(cur);
+//}
+//
+//void groundEnergy::addTermRotationPiZero2Angles(int order, term t1)
+//{
+//	bool flag = false;//no such term by efault
+//	trigPowers cur;
+//	cur.value = t1.value;
+//	bool second_type;
+//	if (t1.len != -1)// not C-case
+//	{
+//		cur.value /= t1.len;
+//		for (unsigned int i = 0; i < t1.len; i++){
+//			second_type = Cos::getSignPiZero(t1.nums[i]) == -1;
+//			if (t1.ops[i] == 'z')
+//				cur.add_trig(0, 1, second_type);
+//			else
+//				cur.add_trig(1, 1, second_type);
+//		}
+//	}
+//
+//	for (unsigned int i = 0; i < trigEnergy[order].size(); i++)
+//	{
+//		if (trigEnergy[order][i] == cur)
+//		{
+//			trigEnergy[order][i].value += cur.value;
+//			flag = true;
+//			break;
+//		}
+//	}
+//	if (!flag)
+//		trigEnergy[order].push_back(cur);
+//}
+//
+//void groundEnergy::addTermRotation2sublattices(int order, term t1)
+//{
+//	bool flag = false;//no such term by efault
+//	trigPowers cur;
+//	cur.value = t1.value;
+//	cur.sinPower = 0;
+//	cur.cosPower = 0;
+//
+//	if (t1.len != -1)// not C-case
+//	{
+//		cur.value /= t1.len;
+//		for (unsigned int i = 0; i < t1.len; i++)
+//			if (t1.ops[i] == 'z'){
+//				cur.cosPower++;
+//			}
+//			else {
+//				cur.sinPower++;
+//				cur.value *= Cos::getSign(t1.nums[i]);
+//			}
+//	}
+//
+//	for (unsigned int i = 0; i < trigEnergy[order].size(); i++)
+//	{
+//		if (trigEnergy[order][i] == cur)
+//		{
+//			trigEnergy[order][i].value += cur.value;
+//			flag = true;
+//			break;
+//		}
+//	}
+//	if (!flag)
+//		trigEnergy[order].push_back(cur);
+//}
+
+
+void groundEnergy::addTriangleTermRotation(int order, term t1,int zeroType)
 {
 	bool flag = false;//no such term by efault
 	trigPowers cur;
 	cur.value = t1.value;
-	cur.sinPower = 0;
-	cur.cosPower = 0;
 
 	if (t1.len != -1)// not C-case
 	{
-		cur.value /= t1.len;
-		for (unsigned int i = 0; i < t1.len; i++)
+		for (unsigned int i = 0; i < t1.len; i++) 
+		{
 			if (t1.ops[i] == 'z')
-				cur.cosPower++;
+				cur.add_trig(1, 1,pseudospin_types::getType(t1.nums[i], zeroType));
 			else
-				cur.sinPower++;
-	}
-
-	for (unsigned int i = 0; i < trigEnergy[order].size(); i++)
-	{
-		if (trigEnergy[order][i] == cur)
-		{
-			trigEnergy[order][i].value += cur.value;
-			flag = true;
-		}
-	}
-	if (!flag)
-		trigEnergy[order].push_back(cur);
-}
-
-void groundEnergy::addTermRotationAntiferromagnet(int order, term t1)
-{
-	bool flag = false;//no such term by efault
-	trigPowers cur;
-	cur.value = t1.value;
-	cur.sinPower = 0;
-	cur.cosPower = 0;
-
-	if (t1.len != -1)// not C-case
-	{
-		cur.value /= t1.len;
-		for (unsigned int i = 0; i < t1.len; i++)
-			if (t1.ops[i] == 'z'){
-				cur.cosPower++;
-				cur.value *= Cos::getSign(t1.nums[i]);
-			}
-			else
-				cur.sinPower++;
-	}
-
-	for (unsigned int i = 0; i < trigEnergy[order].size(); i++)
-	{
-		if (trigEnergy[order][i] == cur)
-		{
-			trigEnergy[order][i].value += cur.value;
-			flag = true;
-		}
-	}
-	if (!flag)
-		trigEnergy[order].push_back(cur);
-
-}
-
-void groundEnergy::addTermRotationPiZero(int order, term t1)
-{
-	bool flag = false;//no such term by efault
-	trigPowers cur;
-	cur.value = t1.value;
-	cur.sinPower = 0;
-	cur.cosPower = 0;
-
-	if (t1.len != -1)// not C-case
-	{
-		cur.value /= t1.len;
-		for (unsigned int i = 0; i < t1.len; i++)
-			if (t1.ops[i] == 'z'){
-				cur.cosPower++;
-			}
-			else {
-				cur.sinPower++;
-				cur.value *= Cos::getSignPiZero(t1.nums[i]);
-			}
-	}
-
-	for (unsigned int i = 0; i < trigEnergy[order].size(); i++)
-	{
-		if (trigEnergy[order][i] == cur)
-		{
-			trigEnergy[order][i].value += cur.value;
-			flag = true;
-			break;
-		}
-	}
-	if (!flag)
-		trigEnergy[order].push_back(cur);
-}
-
-void groundEnergy::addTermRotationZeroPi2Angles(int order, term t1)
-{
-	bool flag = false;//no such term by efault
-	trigPowers cur;
-	cur.value = t1.value;
-	bool second_type;
-	if (t1.len != -1)// not C-case
-	{
-		cur.value /= t1.len;
-		for (unsigned int i = 0; i < t1.len; i++){
-			second_type = Cos::getSignZeroPi(t1.nums[i]) == -1;
-			if (t1.ops[i] == 'z')
-				cur.add_trig(0, 1, second_type);
-			else 
-				cur.add_trig(1, 1, second_type);
+				cur.add_trig(0, 1, pseudospin_types::getType(t1.nums[i], zeroType));
 		}
 	}
 
@@ -201,158 +204,29 @@ void groundEnergy::addTermRotationZeroPi2Angles(int order, term t1)
 		trigEnergy[order].push_back(cur);
 }
 
-void groundEnergy::addTermRotationPiZero2Angles(int order, term t1)
-{
-	bool flag = false;//no such term by efault
-	trigPowers cur;
-	cur.value = t1.value;
-	bool second_type;
-	if (t1.len != -1)// not C-case
-	{
-		cur.value /= t1.len;
-		for (unsigned int i = 0; i < t1.len; i++){
-			second_type = Cos::getSignPiZero(t1.nums[i]) == -1;
-			if (t1.ops[i] == 'z')
-				cur.add_trig(0, 1, second_type);
-			else
-				cur.add_trig(1, 1, second_type);
-		}
-	}
-
-	for (unsigned int i = 0; i < trigEnergy[order].size(); i++)
-	{
-		if (trigEnergy[order][i] == cur)
-		{
-			trigEnergy[order][i].value += cur.value;
-			flag = true;
-			break;
-		}
-	}
-	if (!flag)
-		trigEnergy[order].push_back(cur);
-}
-
-void groundEnergy::addTermRotation2sublattices(int order, term t1)
-{
-	bool flag = false;//no such term by efault
-	trigPowers cur;
-	cur.value = t1.value;
-	cur.sinPower = 0;
-	cur.cosPower = 0;
-
-	if (t1.len != -1)// not C-case
-	{
-		cur.value /= t1.len;
-		for (unsigned int i = 0; i < t1.len; i++)
-			if (t1.ops[i] == 'z'){
-				cur.cosPower++;
-			}
-			else {
-				cur.sinPower++;
-				cur.value *= Cos::getSign(t1.nums[i]);
-			}
-	}
-
-	for (unsigned int i = 0; i < trigEnergy[order].size(); i++)
-	{
-		if (trigEnergy[order][i] == cur)
-		{
-			trigEnergy[order][i].value += cur.value;
-			flag = true;
-			break;
-		}
-	}
-	if (!flag)
-		trigEnergy[order].push_back(cur);
-}
-
-void groundEnergy::addTermRotationZY2sublattices(int order, term t1)
-{
-	bool flag = false;//no such term by efault
-	trigPowers cur;
-	cur.value = t1.value;
-	cur.sinPower = 0;
-	cur.cosPower = 0;
-	cur.complex_power = 0;
-
-	if (t1.len != -1)// not C-case
-	{
-		cur.value /= t1.len;
-		for (unsigned int i = 0; i < t1.len; i++)
-			if (t1.ops[i] == 'z'){
-				cur.cosPower++;
-			}
-			else if (t1.ops[i] == 'p') {
-				cur.sinPower++;
-				cur.value *= Cos::getSign(t1.nums[i]);
-				cur.complex_power++;
-				if (cur.complex_power == 2){
-					cur.value *= -1;
-					cur.complex_power = 0;
-				}
-
-			}
-			else if (t1.ops[i] == 'm') {
-				cur.sinPower++;
-				cur.value *= -Cos::getSign(t1.nums[i]);
-				cur.complex_power++;
-				if (cur.complex_power == 2){
-					cur.value *= -1;
-					cur.complex_power = 0;
-				}
-			}
-			else {
-				std::cout << "WRONG ENERGY";
-			}
-
-	}
-
-	for (unsigned int i = 0; i < trigEnergy[order].size(); i++)
-	{
-		if (trigEnergy[order][i] == cur)
-		{
-			trigEnergy[order][i].value += cur.value;
-			flag = true;
-			break;
-		}
-	}
-	if (!flag)
-		trigEnergy[order].push_back(cur);
-
-}
 
 void groundEnergy::printTermRotation(std::ostream& out, int order,bool two_angels)
 {
 	for (unsigned int i = 0; i < trigEnergy[order].size(); i++)
 	{
-		if (trigEnergy[order][i].complex_power != 0 && abs(trigEnergy[order][i].value) > 0.00000001)
-			std::cout << "AAAAAAAAAAAAAAAA\n AAAAAAAAAAAAAAAAAAAAAAA\n AAAAAAAAAAAAAAAAAA\n !!!!!!!!!!!!!!!!";
-		out << trigEnergy[order][i].value;
-		switch (trigEnergy[order][i].cosPower){
-			case 0: break;
-			case 1: out << "*Cos[beta]"; break;
-			default:out << "*Cos[beta]^" << trigEnergy[order][i].cosPower; break;
-		} 
-		switch (trigEnergy[order][i].sinPower){
-			case 0: break;
-			case 1: out << "*Sin[beta]"; break;
-			default: out << "*Sin[beta]^" << trigEnergy[order][i].sinPower; break;
-		}
-		if (two_angels)
-		{
-			switch (trigEnergy[order][i].cosPower2){
-			case 0: break;
-			case 1: out << "*Cos[gamma]"; break;
-			default:out << "*Cos[gamma]^" << trigEnergy[order][i].cosPower2; break;
-			}
-			switch (trigEnergy[order][i].sinPower2){
-			case 0: break;
-			case 1: out << "*Sin[gamma]"; break;
-			default: out << "*Sin[gamma]^" << trigEnergy[order][i].sinPower2; break;
-			}
-		}
 		
-		int sum_power = trigEnergy[order][i].cosPower + trigEnergy[order][i].sinPower + trigEnergy[order][i].cosPower2 + trigEnergy[order][i].sinPower2;
+		out << trigEnergy[order][i].value;
+		int sum_power=0;
+		for (int j = 0; j < Types; j++) {
+
+			switch (trigEnergy[order][i].cosPower[j]) {
+			case 0: break;
+			case 1: out << "*Cos["<< pseudospin_types::getAngleName(j) <<"]"; break;
+			default:out << "*Cos[" << pseudospin_types::getAngleName(j)<<"]^" << trigEnergy[order][i].cosPower[j]; break;
+			}
+			switch (trigEnergy[order][i].sinPower[j]) {
+			case 0: break;
+			case 1: out << "*Sin[" << pseudospin_types::getAngleName(j) << "]"; break;
+			default: out << "*Sin[" << pseudospin_types::getAngleName(j) << "]^" << trigEnergy[order][i].sinPower[j]; break;
+			}
+			sum_power += trigEnergy[order][i].cosPower[j] + trigEnergy[order][i].sinPower[j];
+		};
+		
 
 		if (!ifNumerical){
 			switch (sum_power){
@@ -369,7 +243,7 @@ void groundEnergy::printTermRotation(std::ostream& out, int order,bool two_angel
 			}
 			
 		}
-			
+	
 		if (i != trigEnergy[order].size() - 1)
 			out << "+";
 	}

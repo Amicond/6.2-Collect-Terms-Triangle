@@ -22,8 +22,8 @@ const string delim = "\\";
 const string config_dir = "config";
 const string inp_res = "input_rot";
 const string out_res = "Results_rot";
-const string out_file_end = "_rot.txt";
-const string add_type = "zero_pi_2_types"; //"antiferro";
+const string out_file_end = "_rot";
+const string add_type = "three_types"; //"antiferro";
 
 
 //Hash functions for unordered maps
@@ -171,216 +171,191 @@ public:
 	
 
 	//mode==1 ?
-	void eval_energy_rotate(int i)
-	{
-		groundEnergy ge;
-		term t1;
-		string s, tmp_s;
-		double temp_val;
-		ge.set(factor, true); //all other cases
-		std::ofstream out_rot;
-		fname.str("");
-		fname << out_res << delim << "energy_rot_" << (*points)[i] << "_" << max_order << ".txt";
-		out_rot.open(fname.str(), ios::out);
-		out_rot.precision(10);
-		out_rot << fixed;
-		out_rot << "{";
-		for (int j = min_order; j <= max_order; j++)
-		{
-			cout << "Order " << j << "\n";
-			ge.clearTerms();
-			for (int k = min_op_amount; k <= j; k++)
-			{
-				cout << "SubOrder: " << k << "\n";
-				fname.str("");
-				fname << "d:\\Andrew\\Practice\\!!!_Last Set\\6.2 Collect Terms\\6.2 Collect Terms" << delim << inp_res << delim << (*points)[i] << "\\" << j << "_results_" << (*points)[i] << "_" << k << out_file_end;
-				ifstream cur(fname.str(), ios::in);
-
-				t1.setOrder(j);
-				int str_amount = 0;
-				while (!cur.eof())
-				{
-					str_amount++;
-					if (str_amount % 200000 == 0)
-						cout << "Or:" << j << " Sub:" << k << "\n";
-					if (str_amount % 5000 == 0)
-						cout << str_amount << " ";
-					getline(cur, s);
-					if (s.length() > 0)
-					{
-						istringstream iss;
-						iss.str(s);
-						iss >> tmp_s >> temp_val;
-
-
-						t1.decompose(tmp_s, temp_val);
-					
-						ge.addTermRotation(j, t1);
-					}
-				}
-				cur.close();
-			}
-
-
-		
-			ge.printTermRotation(out_rot, j);
-			if (j != max_order)
-			out_rot << ",";
-		
-
-			std::cout << "Done!\n";
-		}
-
-
-
-		out_rot << "}";
-		out_rot.close();
-
-	}
+	//void eval_energy_rotate(int i)
+	//{
+	//	groundEnergy ge;
+	//	term t1;
+	//	string s, tmp_s;
+	//	double temp_val;
+	//	ge.set(factor, true); //all other cases
+	//	std::ofstream out_rot;
+	//	fname.str("");
+	//	fname << out_res << delim << "energy_rot_" << (*points)[i] << "_" << max_order << ".txt";
+	//	out_rot.open(fname.str(), ios::out);
+	//	out_rot.precision(10);
+	//	out_rot << fixed;
+	//	out_rot << "{";
+	//	for (int j = min_order; j <= max_order; j++)
+	//	{
+	//		cout << "Order " << j << "\n";
+	//		ge.clearTerms();
+	//		for (int k = min_op_amount; k <= j; k++)
+	//		{
+	//			cout << "SubOrder: " << k << "\n";
+	//			fname.str("");
+	//			fname << "d:\\Andrew\\Practice\\!!!_Last Set\\6.2 Collect Terms\\6.2 Collect Terms" << delim << inp_res << delim << (*points)[i] << "\\" << j << "_results_" << (*points)[i] << "_" << k << out_file_end;
+	//			ifstream cur(fname.str(), ios::in);
+	//			t1.setOrder(j);
+	//			int str_amount = 0;
+	//			while (!cur.eof())
+	//			{
+	//				str_amount++;
+	//				if (str_amount % 200000 == 0)
+	//					cout << "Or:" << j << " Sub:" << k << "\n";
+	//				if (str_amount % 5000 == 0)
+	//					cout << str_amount << " ";
+	//				getline(cur, s);
+	//				if (s.length() > 0)
+	//				{
+	//					istringstream iss;
+	//					iss.str(s);
+	//					iss >> tmp_s >> temp_val;
+	//					t1.decompose(tmp_s, temp_val);
+	//				
+	//					ge.addTermRotation(j, t1);
+	//				}
+	//			}
+	//			cur.close();
+	//		}
+	//	
+	//		ge.printTermRotation(out_rot, j);
+	//		if (j != max_order)
+	//		out_rot << ",";
+	//	
+	//		std::cout << "Done!\n";
+	//	}
+	//	out_rot << "}";
+	//	out_rot.close();
+	//}
 
 	//mode 3.0
-	void eval_excitations_numerical(int i,int antiferro_mode)
-	{
-		std::ofstream out_rot_excitation_numericals_single;
-		AopXZRotateStorage rotate_excitation_storage;
-		term t1;
-
-		string s, tmp_s;
-		double temp_val;
-
-		if (antiferro_mode == 1)
-			tmp_s = "_" + add_type;
-		else
-			tmp_s = "";
-		fname.str("");
-		fname.precision(2);
-		fname << fixed;
-		fname << out_res << delim << (*points)[i] << delim << "excitations_rot_" << (*points)[i] << "_" << max_order << "_";
-		fname.precision(angles_precision);
-		fname << angle_start2 << "_" << angle_start;
-		fname << tmp_s << "_single.txt";
-		out_rot_excitation_numericals_single.open(fname.str(), ios::out);
-		out_rot_excitation_numericals_single.precision(10);
-		out_rot_excitation_numericals_single << fixed;
-		out_rot_excitation_numericals_single << "{";
-		//init of array for numerical excitations files
-		double angle_cur = angle_start, angle_cur2 = angle_start2;
-
-		for (int j = min_order; j <= max_order; j++)
-		{
-			rotate_excitation_storage.clearTerms();
-			rotate_excitation_storage.set(m, size, false, angle_start, angle_finish, angle_step, angle_start2, angle_finish2, angle_step2, true);
-			for (int k = min_op_amount; k <= j; k++)
-			{
-				cout << "SubOrder: " << k << "\n";
-				fname.str("");
-				fname << "d:\\Andrew\\Practice\\!!!_Last Set\\6.2 Collect Terms\\6.2 Collect Terms" << delim << inp_res << delim << (*points)[i] << "\\" << j << "_results_" << (*points)[i] << "_" << k << out_file_end;
-
-				ifstream cur(fname.str(), ios::in);
-
-				t1.setOrder(j);
-
-				int str_amount = 0;
-				while (!cur.eof())
-				{
-					str_amount++;
-					if (str_amount % 200000 == 0)
-						cout << "Or:" << j << " Sub:" << k << "\n";
-					if (str_amount % 5000 == 0)
-						cout << str_amount << " ";
-					getline(cur, s);
-					if (s.length() > 0)
-					{
-						istringstream iss;
-						iss.str(s);
-						iss >> tmp_s >> temp_val;
-
-
-						t1.decompose(tmp_s, temp_val);
-						
-						if (t1.len > 0)//for rotate excitations
-							if (antiferro_mode == 1)
-							{
-								rotate_excitation_storage.ConvertTo2TypesNumerical(t1, 0);
-								rotate_excitation_storage.ConvertTo2TypesNumerical(t1, 1);
-							}
-							else
-								rotate_excitation_storage.ConvertToBilinear(t1);
-					}
-				}
-				cur.close();
-			}
-			rotate_excitation_storage.print_numerical_single_term_2_types(out_rot_excitation_numericals_single);
-			if (j != max_order) {
-				out_rot_excitation_numericals_single << ",";
-			}
-		}
-		out_rot_excitation_numericals_single << "}";
-		out_rot_excitation_numericals_single.close();
-	}
+	//void eval_excitations_numerical(int i,int antiferro_mode)
+	//{
+	//	std::ofstream out_rot_excitation_numericals_single;
+	//	AopXZRotateStorage rotate_excitation_storage;
+	//	term t1;
+	//	string s, tmp_s;
+	//	double temp_val;
+	//	if (antiferro_mode == 1)
+	//		tmp_s = "_" + add_type;
+	//	else
+	//		tmp_s = "";
+	//	fname.str("");
+	//	fname.precision(2);
+	//	fname << fixed;
+	//	fname << out_res << delim << (*points)[i] << delim << "excitations_rot_" << (*points)[i] << "_" << max_order << "_";
+	//	fname.precision(angles_precision);
+	//	fname << angle_start2 << "_" << angle_start;
+	//	fname << tmp_s << "_single.txt";
+	//	out_rot_excitation_numericals_single.open(fname.str(), ios::out);
+	//	out_rot_excitation_numericals_single.precision(10);
+	//	out_rot_excitation_numericals_single << fixed;
+	//	out_rot_excitation_numericals_single << "{";
+	//	//init of array for numerical excitations files
+	//	double angle_cur = angle_start, angle_cur2 = angle_start2;
+	//	for (int j = min_order; j <= max_order; j++)
+	//	{
+	//		rotate_excitation_storage.clearTerms();
+	//		rotate_excitation_storage.set(m, size, false, angle_start, angle_finish, angle_step, angle_start2, angle_finish2, angle_step2, true);
+	//		for (int k = min_op_amount; k <= j; k++)
+	//		{
+	//			cout << "SubOrder: " << k << "\n";
+	//			fname.str("");
+	//			fname << "d:\\Andrew\\Practice\\!!!_Last Set\\6.2 Collect Terms\\6.2 Collect Terms" << delim << inp_res << delim << (*points)[i] << "\\" << j << "_results_" << (*points)[i] << "_" << k << out_file_end;
+	//			ifstream cur(fname.str(), ios::in);
+	//			t1.setOrder(j);
+	//			int str_amount = 0;
+	//			while (!cur.eof())
+	//			{
+	//				str_amount++;
+	//				if (str_amount % 200000 == 0)
+	//					cout << "Or:" << j << " Sub:" << k << "\n";
+	//				if (str_amount % 5000 == 0)
+	//					cout << str_amount << " ";
+	//				getline(cur, s);
+	//				if (s.length() > 0)
+	//				{
+	//					istringstream iss;
+	//					iss.str(s);
+	//					iss >> tmp_s >> temp_val;
+	//					t1.decompose(tmp_s, temp_val);
+	//					
+	//					if (t1.len > 0)//for rotate excitations
+	//						if (antiferro_mode == 1)
+	//						{
+	//							rotate_excitation_storage.ConvertTo2TypesNumerical(t1, 0);
+	//							rotate_excitation_storage.ConvertTo2TypesNumerical(t1, 1);
+	//						}
+	//						else
+	//							rotate_excitation_storage.ConvertToBilinear(t1);
+	//				}
+	//			}
+	//			cur.close();
+	//		}
+	//		rotate_excitation_storage.print_numerical_single_term_2_types(out_rot_excitation_numericals_single);
+	//		if (j != max_order) {
+	//			out_rot_excitation_numericals_single << ",";
+	//		}
+	//	}
+	//	out_rot_excitation_numericals_single << "}";
+	//	out_rot_excitation_numericals_single.close();
+	//}
 
 	//mode==4
-	void eval_energy_rotate_antiferro(int i)
-	{
-		groundEnergy ge;
-		term t1;
-		string s, tmp_s;
-		double temp_val;
+	//void eval_energy_rotate_antiferro(int i)
+	//{
+	//	groundEnergy ge;
+	//	term t1;
+	//	string s, tmp_s;
+	//	double temp_val;
+	//	ge.set(-0.5, true);
+	//	std::ofstream out_energy_rot_antiferro;
+	//	fname.str("");
+	//	fname << out_res << delim << "energy_rot_" << add_type << "_" << (*points)[i] << "_" << max_order << ".txt";
+	//	out_energy_rot_antiferro.open(fname.str(), ios::out);
+	//	out_energy_rot_antiferro.precision(10);
+	//	out_energy_rot_antiferro << fixed;
+	//	out_energy_rot_antiferro << "{";
+	//	for (int j = min_order; j <= max_order; j++)
+	//	{
+	//		ge.clearTerms();
+	//		cout << "Order " << j << endl;
+	//		for (int k = min_op_amount; k <= j; k++)
+	//		{
+	//			cout << "SubOrder: " << k << "\n";
+	//			fname.str("");
+	//			fname << "d:\\Andrew\\Practice\\!!!_Last Set\\6.2 Collect Terms\\6.2 Collect Terms" << delim << inp_res << delim << (*points)[i] << "\\" << j << "_results_" << (*points)[i] << "_" << k << out_file_end;
+	//			ifstream cur(fname.str(), ios::in);
+	//			t1.setOrder(j);
+	//			int str_amount = 0;
+	//			while (!cur.eof())
+	//			{
+	//				str_amount++;
+	//				if (str_amount % 200000 == 0)
+	//					cout << "Or:" << j << " Sub:" << k << "\n";
+	//				if (str_amount % 5000 == 0)
+	//					cout << str_amount << " ";
+	//				getline(cur, s);
+	//				if (s.length() > 0)
+	//				{
+	//					istringstream iss;
+	//					iss.str(s);
+	//					iss >> tmp_s >> temp_val;
+	//					t1.decompose(tmp_s, temp_val);
+	//					ge.addTermRotationZeroPi2Angles(j, t1);
+	//				}
+	//			}
+	//			cur.close();
+	//		}
+	//		ge.printTermRotation(out_energy_rot_antiferro, j, true);
+	//		if (j != max_order)
+	//			out_energy_rot_antiferro << ",";
+	//	}
+	//	out_energy_rot_antiferro << "}";
+	//	out_energy_rot_antiferro.close();
+	//}
 
-		ge.set(-0.5, true);
-
-		std::ofstream out_energy_rot_antiferro;
-		fname.str("");
-		fname << out_res << delim << "energy_rot_" << add_type << "_" << (*points)[i] << "_" << max_order << ".txt";
-		out_energy_rot_antiferro.open(fname.str(), ios::out);
-		out_energy_rot_antiferro.precision(10);
-		out_energy_rot_antiferro << fixed;
-		out_energy_rot_antiferro << "{";
-
-		for (int j = min_order; j <= max_order; j++)
-		{
-			ge.clearTerms();
-			cout << "Order " << j << endl;
-			for (int k = min_op_amount; k <= j; k++)
-			{
-				cout << "SubOrder: " << k << "\n";
-				fname.str("");
-				fname << "d:\\Andrew\\Practice\\!!!_Last Set\\6.2 Collect Terms\\6.2 Collect Terms" << delim << inp_res << delim << (*points)[i] << "\\" << j << "_results_" << (*points)[i] << "_" << k << out_file_end;
-				ifstream cur(fname.str(), ios::in);
-
-				t1.setOrder(j);
-				int str_amount = 0;
-				while (!cur.eof())
-				{
-					str_amount++;
-					if (str_amount % 200000 == 0)
-						cout << "Or:" << j << " Sub:" << k << "\n";
-					if (str_amount % 5000 == 0)
-						cout << str_amount << " ";
-					getline(cur, s);
-					if (s.length() > 0)
-					{
-						istringstream iss;
-						iss.str(s);
-						iss >> tmp_s >> temp_val;
-
-						t1.decompose(tmp_s, temp_val);
-
-						ge.addTermRotationZeroPi2Angles(j, t1);
-					}
-				}
-				cur.close();
-			}
-			ge.printTermRotation(out_energy_rot_antiferro, j, true);
-			if (j != max_order)
-				out_energy_rot_antiferro << ",";
-
-		}
-		out_energy_rot_antiferro << "}";
-		out_energy_rot_antiferro.close();
-	}
-
-	void eval_energy_rotate_3types()
+	void eval_energy_rotate_3types(string root_path)
 	{
 		groundEnergy ge;
 		term t1;
@@ -403,33 +378,36 @@ public:
 			cout << "Order " << j << endl;
 			for (int k = min_op_amount; k <= j; k++)
 			{
-				cout << "SubOrder: " << k << "\n";
-				fname.str("");
-				fname << "d:\\Andrew\\Practice\\!!!_Last Set\\6.2 Collect Terms\\6.2 Collect Terms" << delim << inp_res << delim << (*points)[i] << "\\" << j << "_results_" << (*points)[i] << "_" << k << out_file_end;
-				ifstream cur(fname.str(), ios::in);
-
-				t1.setOrder(j);
-				int str_amount = 0;
-				while (!cur.eof())
+				for (int l = 0; l < Types; l++)
 				{
-					str_amount++;
-					if (str_amount % 200000 == 0)
-						cout << "Or:" << j << " Sub:" << k << "\n";
-					if (str_amount % 5000 == 0)
-						cout << str_amount << " ";
-					getline(cur, s);
-					if (s.length() > 0)
+					cout << "SubOrder: " << k << "\n";
+					fname.str("");
+					fname << root_path << delim << inp_res << delim << j << "_results_" << k << out_file_end << "_"<<l<<".txt";
+					ifstream cur(fname.str(), ios::in);
+
+					t1.setOrder(j);
+					int str_amount = 0;
+					while (!cur.eof())
 					{
-						istringstream iss;
-						iss.str(s);
-						iss >> tmp_s >> temp_val;
+						str_amount++;
+						if (str_amount % 200000 == 0)
+							cout << "Or:" << j << " Sub:" << k << "\n";
+						if (str_amount % 5000 == 0)
+							cout << str_amount << " ";
+						getline(cur, s);
+						if (s.length() > 0)
+						{
+							istringstream iss;
+							iss.str(s);
+							iss >> tmp_s >> temp_val;
 
-						t1.decompose(tmp_s, temp_val);
+							t1.decompose(tmp_s, temp_val);
 
-						ge.addTermRotationZeroPi2Angles(j, t1);
+							ge.addTriangleTermRotation(j, t1, l);
+						}
 					}
+					cur.close();
 				}
-				cur.close();
 			}
 			ge.printTermRotation(out_energy_rot_antiferro, j, true);
 			if (j != max_order)
@@ -450,12 +428,14 @@ int main(int argc, char * argv[])
 	fname << config_dir << delim << "config.txt";
 	ifstream config(fname.str(), ios::in);
 	int num_points, min_order, max_order;
-	string tmp;
+	string tmp,root_path;
 	int a_amount,mode,analytical_mode,antiferro_mode;
 	int angles_precision;
 	double angle_start, angle_step, angle_finish;
 	double angle_start2, angle_step2, angle_finish2;
 
+	getline(config, tmp);
+	config >> root_path;
 	getline(config, tmp);
 	config >> num_points;
 	getline(config, tmp);
@@ -554,13 +534,16 @@ int main(int argc, char * argv[])
 		switch (mode)
 		{
 			case 1:
-				my_res.eval_energy_rotate(i);
+				//my_res.eval_energy_rotate(i);
 				break;
 			case 3:
-				my_res.eval_excitations_numerical(i, 1);
+				//my_res.eval_excitations_numerical(i, 1);
 				break;
 			case 4:
-				my_res.eval_energy_rotate_antiferro(i);
+				//my_res.eval_energy_rotate_antiferro(i);
+				break;
+			case 5: 
+				my_res.eval_energy_rotate_3types(root_path);
 				break;
 		}
 	}

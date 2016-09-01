@@ -1,3 +1,5 @@
+Path to initial folder
+d:\Andrew\Practice\!!!_Triangle set\6.2 Collect Terms\6.2 Collect Terms\
 Num of points
 1
 Start order | Finish Order 
